@@ -1,0 +1,31 @@
+<!-- htmlhint meta-charset-utf-8: false -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Veja um Mundo Melhor{% endblock %}</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'vmm/css/style.css' %}">
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <header class="bg-blue-600 text-white p-4">
+        <nav class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Veja um Mundo Melhor</h1>
+            <ul class="flex space-x-4">
+                <li><a href="{% url 'vmm:index' %}" class="hover:underline">Inicio</a></li>
+                <li><a href="{% url 'vmm:cadastro_voluntario' %}" class="hover:underline">Cadastrar</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Conteúdo principal -->
+    <main class="w-full min-h-screen">
+        {% block content %}
+        {% endblock %}
+    </main>
+</body>
+</html>
