@@ -5,8 +5,7 @@ app_name = 'vmm'
 
 urlpatterns = [
     # Página principal de inscrição
-    path('', views.index, name='index'),
-    path('cadastro-voluntario/', views.cadastro_voluntario, name='cadastro_voluntario'),
+    path('', views.cadastro_voluntario, name='cadastro_voluntario'),
     
     
     # Área administrativa (apenas para staff)

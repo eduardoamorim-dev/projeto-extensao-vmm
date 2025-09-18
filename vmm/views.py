@@ -7,9 +7,6 @@ from django.views.decorators.csrf import csrf_protect
 from .models import Voluntario
 import re
 
-def index(request):
-    return render(request, 'index.html')
-
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def cadastro_voluntario(request):
@@ -135,7 +132,6 @@ def cadastro_voluntario(request):
     # GET request - mostrar formulário limpo (sem form_data)
     return render(request, 'cadastro_voluntario.html')
 
-
 def validar_cpf(cpf):
     """
     Valida se o CPF é válido usando o algoritmo oficial
@@ -171,7 +167,6 @@ def validar_cpf(cpf):
     
     # Verifica o segundo dígito
     return int(cpf[10]) == digito2
-
 
 # View adicional para listar voluntários (para admin)
 def lista_voluntarios(request):
