@@ -173,9 +173,9 @@ def lista_voluntarios(request):
     """
     View para listar todos os voluntários (apenas para staff)
     """
-    if not request.user.is_staff:
-        messages.error(request, "Acesso negado.")
-        return redirect('vmm:cadastro_voluntario')  # Use o namespace correto
+    # if not request.user.is_staff:
+    #     messages.error(request, "Acesso negado.")
+    #     return redirect('vmm:cadastro_voluntario')  
     
     voluntarios = Voluntario.objects.all().order_by('-data_cadastro')
     
@@ -196,5 +196,5 @@ def lista_voluntarios(request):
         'agencia_filtro': agencia_filtro,
         'status_filtro': status_filtro,
     }
-    
-    return render(request, 'voluntarios/lista.html', context)
+
+    return render(request, 'admin_voluntarios_lista.html', context)

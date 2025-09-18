@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Voluntários | Veja Um Mundo Melhor - Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .primary-color { color: #20A193; }
+        .secondary-color { color: #C5D210; }
+        .primary-bg { background-color: #20A193; }
+        .secondary-bg { background-color: #C5D210; }
+        .gradient-bg { background: linear-gradient(135deg, #20A193 0%, #185048 100%); }
+        .accent-gradient { background: linear-gradient(135deg, #20A193 0%, #75B62F 100%); }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #20A193;
+            border-radius: 3px;
+        }
+        
+        /* Print styles */
+        @media print {
+            .no-print { display: none !important; }
+            body { font-size: 12px; }
+            .table-container { overflow: visible !important; }
+        }
+        
+        /* Responsive table */
+        @media (max-width: 768px) {
+            .responsive-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 secondary-bg rounded-full flex items-center justify-center">
+                            <span class="text-white font-bold text-lg">🌍</span>
+                        </div>
+                        <div>
+                            <h1 class="text-2xl font-bold">Veja Um Mundo Melhor</h1>
+                            <p class="text-sm text-gray-200">Painel Administrativo</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4 no-print">
+                    <span class="text-sm text-gray-200">Olá, Admin</span>
+                    <a href="{% url 'vmm:cadastro_voluntario' %}" 
+                       class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors backdrop-blur-sm">
+                        Ver Formulário
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- status  -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <span class="text-3xl"></span>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Total de Voluntários</p>
+                        <p class="text-2xl font-bold primary-color">{{ voluntarios.count }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <span class="text-3xl"></span>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Ativos</p>
+                        <p class="text-2xl font-bold text-blue-600">{{ voluntarios|length }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <span class="text-3xl"></span>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Agências</p>
+                        <p class="text-2xl font-bold text-yellow-600">4</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <span class="text-3xl"></span>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Hoje</p>
+                        <p class="text-2xl font-bold text-purple-600">{{ voluntarios|length }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros e Ações -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                <h2 class="text-2xl font-bold primary-color flex items-center">
+                    <span class="mr-3"></span>
+                    Lista de Voluntários
+                </h2>
+                
+                <!-- Filter Form -->
+                <form method="GET" class="flex flex-col sm:flex-row gap-4 items-center no-print">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm font-medium text-gray-700">Agência:</label>
+                        <select name="agencia" class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+                            <option value="">Todas</option>
+                            {% for codigo, nome in agencias %}
+                                <option value="{{ codigo }}" {% if codigo == agencia_filtro %}selected{% endif %}>
+                                    {{ nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm font-medium text-gray-700">Status:</label>
+                        <select name="status" class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500">
+                            <option value="">Todos</option>
+                            {% for codigo, nome in status_choices %}
+                                <option value="{{ codigo }}" {% if codigo == status_filtro %}selected{% endif %}>
+                                    {{ nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <button type="submit" class="accent-gradient text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
+                            Filtrar
+                        </button>
+                        <a href="{% url 'vmm:lista_voluntarios' %}" class="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors">
+                            Limpar
+                        </a>
+                        <button type="button" onclick="window.print()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
+                            Imprimir
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabela de voluntários -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="table-container overflow-x-auto custom-scrollbar" style="max-height: 70vh;">
+                <table class="min-w-full divide-y divide-gray-200 responsive-table">
+                    <thead class="primary-bg text-white sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Voluntário
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Contato
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Agência/Setor
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Camiseta
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Cargo
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Cadastro
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Status
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for voluntario in voluntarios %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div>
+                                        <div class="text-sm font-bold text-gray-900">
+                                            {{ voluntario.nome_completo }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            CPF: {{ voluntario.cpf }}
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">
+                                        {{ voluntario.email_corporativo }}
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        {{ voluntario.telefone }}
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ voluntario.get_agencia_display }}
+                                    </div>
+                                    <div class="text-sm text-gray-500">
+                                        {{ voluntario.setor }}
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                        {{ voluntario.get_tamanho_camiseta_display }}
+                                    </span>
+                                </td>
+                                
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">
+                                        {% if voluntario.cargo %}
+                                            {{ voluntario.cargo }}
+                                        {% else %}
+                                            <span class="text-gray-400 italic">A definir</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <div>{{ voluntario.data_cadastro|date:"d/m/Y" }}</div>
+                                    <div class="text-xs">{{ voluntario.data_cadastro|date:"H:i" }}</div>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if voluntario.status == 'ativo' %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                            {{ voluntario.get_status_display }}
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                                            ❌ {{ voluntario.get_status_display }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            
+                            <!-- Experiencias  -->
+                            {% if voluntario.experiencia_anterior %}
+                                <tr class="bg-gray-50">
+                                    <td colspan="7" class="px-6 py-3">
+                                        <div class="text-sm">
+                                            <span class="font-medium text-gray-700">Experiência/Disponibilidade:</span>
+                                            <p class="text-gray-600 mt-1 pl-4 border-l-2 border-gray-300">
+                                                {{ voluntario.experiencia_anterior }}
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% empty %}
+                            <tr>
+                                <td colspan="7" class="px-6 py-12 text-center">
+                                    <div class="text-gray-500">
+                                        <span class="text-4xl mb-4 block"></span>
+                                        <p class="text-lg font-medium">Nenhum voluntário encontrado</p>
+                                        <p class="text-sm">Tente ajustar os filtros ou aguarde novas inscrições</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Resumo -->
+        {% if voluntarios %}
+            <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-bold primary-color mb-4">Voluntários por Agência</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {% regroup voluntarios by agencia as agencia_groups %}
+                    {% for agencia_group in agencia_groups %}
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="text-sm font-medium text-gray-600">
+                                {{ agencia_group.grouper }} - {{ agencia_group.list.0.get_agencia_display }}
+                            </div>
+                            <div class="text-2xl font-bold primary-color">
+                                {{ agencia_group.list|length }} voluntários
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <h3 class="text-lg font-bold primary-color mb-4 mt-6">Camisetas</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {% regroup voluntarios by tamanho_camiseta as tamanho_groups %}
+                    {% for tamanho_group in tamanho_groups %}
+                        <div class="bg-blue-50 rounded-lg p-3 text-center">
+                            <div class="text-sm font-medium text-blue-600">
+                                {{ tamanho_group.list.0.get_tamanho_camiseta_display }}
+                            </div>
+                            <div class="text-xl font-bold text-blue-800">
+                                {{ tamanho_group.list|length }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="gradient-bg text-white py-6 mt-12 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-lg font-medium">Veja Um Mundo Melhor</p>
+            <p class="text-sm text-gray-200 mt-1">Sicoob Coopacredi - Sistema de Gestão de Voluntários</p>
+            <div class="flex justify-center items-center space-x-4 mt-3">
+                <span class="text-xs bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">#VejaUmMundoMelhor</span>
+                <span class="text-xs bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">#SicoobCoopacredi</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Auto-refresh functionality (optional)
+        function refreshData() {
+            if (confirm('Deseja atualizar os dados da página?')) {
+                window.location.reload();
+            }
+        }
+        
+        // Auto refresh every 5 minutes (optional)
+        // setInterval(refreshData, 300000);
+        
+        // Export functionality
+        function exportToCSV() {
+            // This would be implemented based on your needs
+            alert('Funcionalidade de exportação em desenvolvimento');
+        }
+        
+        // Print optimization
+        window.addEventListener('beforeprint', function() {
+            document.body.classList.add('printing');
+        });
+        
+        window.addEventListener('afterprint', function() {
+            document.body.classList.remove('printing');
+        });
+    </script>
+</body>
+</html>
