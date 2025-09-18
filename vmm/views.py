@@ -97,7 +97,7 @@ def cadastro_voluntario(request):
             )
             
             # Redirecionar para evitar reenvio do formulário e limpar campos
-            return redirect('vmm:cadastro_voluntario')  # Use o namespace correto
+            return redirect('vmm:cadastro_voluntario') 
 
         except IntegrityError as e:
             error_message = str(e).lower()
@@ -116,7 +116,7 @@ def cadastro_voluntario(request):
             })
             
         except Exception as e:
-            # Log do erro para debug (opcional)
+            # Log do erro para debug
             print(f"Erro inesperado no cadastro: {e}")
             
             messages.error(
