@@ -7,6 +7,8 @@ from django.views.decorators.csrf import csrf_protect
 from .models import Voluntario
 import re
 
+# As choices agora vêm diretamente da model
+
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def cadastro_voluntario(request):
@@ -20,10 +22,15 @@ def cadastro_voluntario(request):
             email_corporativo = request.POST.get('email_corporativo', '').strip().lower()
             cpf = request.POST.get('cpf', '').strip()
             telefone = request.POST.get('telefone', '').strip()
-            agencia = request.POST.get('agencia', '')
+            agencia_raw = request.POST.get('agencia', '').strip()
             setor = request.POST.get('setor', '').strip()
             tamanho_camiseta = request.POST.get('tamanho_camiseta', '')
             experiencia_anterior = request.POST.get('experiencia_anterior', '').strip()
+
+            # Processar agência (extrair código se veio no formato "001 - 001 - Nome da Agência")
+            agencia = agencia_raw
+            if ' - ' in agencia_raw:
+                agencia = agencia_raw.split(' - ')[0].strip()
 
             # Validações básicas
             errors = []
@@ -58,19 +65,31 @@ def cadastro_voluntario(request):
                     
             if not agencia:
                 errors.append("Agência é obrigatória.")
+            else:
+                # Verificar se a agência existe na lista
+                agencias_validas = [codigo for codigo, nome in Voluntario.AGENCIAS_CHOICES]
+                if agencia not in agencias_validas:
+                    errors.append("Agência selecionada não é válida.")
                 
             if not setor:
                 errors.append("Setor é obrigatório.")
                 
             if not tamanho_camiseta:
                 errors.append("Tamanho da camiseta é obrigatório.")
+            else:
+                # Verificar se o tamanho da camiseta é válido
+                tamanhos_validos = [codigo for codigo, nome in Voluntario.TAMANHOS_CAMISETA]
+                if tamanho_camiseta not in tamanhos_validos:
+                    errors.append("Tamanho da camiseta selecionado não é válido.")
 
             # Se há erros, retornar para o formulário
             if errors:
                 for error in errors:
                     messages.error(request, error)
                 return render(request, 'cadastro_voluntario.html', {
-                    'form_data': request.POST
+                    'form_data': request.POST,
+                    'agencias': Voluntario.AGENCIAS_CHOICES,
+                    'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
                 })
 
             # Limpar CPF para armazenamento (apenas números)
@@ -82,7 +101,7 @@ def cadastro_voluntario(request):
                 email_corporativo=email_corporativo,
                 cpf=cpf_limpo,  # Salvar CPF limpo
                 telefone=telefone,
-                agencia=agencia,
+                agencia=agencia,  # Salvar apenas o código
                 setor=setor,
                 tamanho_camiseta=tamanho_camiseta,
                 experiencia_anterior=experiencia_anterior if experiencia_anterior else None,
@@ -112,7 +131,9 @@ def cadastro_voluntario(request):
                 messages.error(request, "Erro ao processar inscrição. Tente novamente.")
             
             return render(request, 'cadastro_voluntario.html', {
-                'form_data': request.POST
+                'form_data': request.POST,
+                'agencias': Voluntario.AGENCIAS_CHOICES,
+                'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
             })
             
         except Exception as e:
@@ -126,11 +147,16 @@ def cadastro_voluntario(request):
             )
             
             return render(request, 'cadastro_voluntario.html', {
-                'form_data': request.POST
+                'form_data': request.POST,
+                'agencias': Voluntario.AGENCIAS_CHOICES,
+                'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
             })
 
-    # GET request - mostrar formulário limpo (sem form_data)
-    return render(request, 'cadastro_voluntario.html')
+    # GET request - mostrar formulário limpo
+    return render(request, 'cadastro_voluntario.html', {
+        'agencias': Voluntario.AGENCIAS_CHOICES,
+        'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
+    })
 
 def validar_cpf(cpf):
     """
@@ -189,12 +215,47 @@ def lista_voluntarios(request):
     if status_filtro:
         voluntarios = voluntarios.filter(status=status_filtro)
     
+    # Converter códigos de agência para nomes para exibição
+    def get_nome_agencia(codigo):
+        for cod, nome in Voluntario.AGENCIAS_CHOICES:
+            if cod == codigo:
+                return nome
+        return codigo
+    
+    # Converter códigos de tamanho para nomes
+    def get_nome_tamanho(codigo):
+        for cod, nome in Voluntario.TAMANHOS_CAMISETA:
+            if cod == codigo:
+                return nome
+        return codigo
+    
+    # Adicionar nomes às instâncias dos voluntários
+    for voluntario in voluntarios:
+        voluntario.nome_agencia = get_nome_agencia(voluntario.agencia)
+        voluntario.nome_tamanho = get_nome_tamanho(voluntario.tamanho_camiseta)
+    
     context = {
         'voluntarios': voluntarios,
         'agencias': Voluntario.AGENCIAS_CHOICES,
         'status_choices': Voluntario.STATUS_CHOICES,
+        'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
         'agencia_filtro': agencia_filtro,
         'status_filtro': status_filtro,
     }
 
     return render(request, 'admin_voluntarios_lista.html', context)
+
+# Função auxiliar para obter dados das choices (pode ser útil para APIs)
+def get_agencias_json(request):
+    """
+    Retorna as agências em formato JSON para AJAX
+    """
+    from django.http import JsonResponse
+    return JsonResponse({'agencias': Voluntario.AGENCIAS_CHOICES})
+
+def get_tamanhos_json(request):
+    """
+    Retorna os tamanhos em formato JSON para AJAX
+    """
+    from django.http import JsonResponse
+    return JsonResponse({'tamanhos': Voluntario.TAMANHOS_CAMISETA})

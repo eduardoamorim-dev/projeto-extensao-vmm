@@ -3,6 +3,9 @@
 {% block title %}Veja Um Mundo Melhor - Inscrição Voluntários | Sicoob Coopacredi{% endblock %}
 
 {% block content %}
+
+{% include "partials/navbar.html" %}
+
 <!-- Hero Section -->
 <section class="min-h-screen flex items-center justify-center text-white text-center px-6" style="background: linear-gradient(135deg, #20A193 0%, #185048 100%);">
     <div class="max-w-4xl mx-auto">
@@ -120,15 +123,31 @@
                         <label class="block text-sm font-bold text-gray-700 mb-2">
                             Agência <span class="text-red-500">*</span>
                         </label>
-                        <select name="agencia" required 
-                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors"
-                                style="focus:border-color: #C5D210;">
-                            <option value="" disabled {% if not form_data.agencia %}selected{% endif %}>Selecione a agência</option>
-                            <option value="001" {% if form_data.agencia == '001' %}selected{% endif %}>001 - Matriz Patrocínio</option>
-                            <option value="002" {% if form_data.agencia == '002' %}selected{% endif %}>002 - Agência Uberlândia</option>
-                            <option value="003" {% if form_data.agencia == '003' %}selected{% endif %}>003 - Agência Guimarânia</option>
-                            <option value="004" {% if form_data.agencia == '004' %}selected{% endif %}>004 - Agência Coromandel</option>
-                        </select>
+                        <div class="relative">
+                            <input type="text" 
+                                   name="agencia" 
+                                   id="agencia-search"
+                                   required 
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors"
+                                   style="focus:border-color: #C5D210;"
+                                   placeholder="Digite o nome ou código da agência"
+                                   value="{{ form_data.agencia|default:'' }}"
+                                   onkeyup="filtrarAgencias()"
+                                   autocomplete="off">
+                            
+                            <div id="agencias-dropdown" class="absolute z-10 w-full bg-white border-2 border-gray-200 rounded-xl mt-1 max-h-48 overflow-y-auto hidden">
+                                {% for codigo, nome in agencias %}
+                                    <div class="agencia-option px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                         data-codigo="{{ codigo }}"
+                                         data-nome="{{ nome }}"
+                                         onclick="selecionarAgencia('{{ codigo }}', '{{ nome }}')">
+                                        <div class="font-semibold text-gray-800">{{ codigo }}</div>
+                                        <div class="text-sm text-gray-600">{{ nome }}</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <small class="text-gray-500 text-sm">Digite para buscar sua agência</small>
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">
@@ -152,15 +171,11 @@
                                 class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none transition-colors"
                                 style="focus:border-color: #C5D210;">
                             <option value="" disabled {% if not form_data.tamanho_camiseta %}selected{% endif %}>Selecione o tamanho</option>
-                            <option value="P" {% if form_data.tamanho_camiseta == 'P' %}selected{% endif %}>P</option>
-                            <option value="M" {% if form_data.tamanho_camiseta == 'M' %}selected{% endif %}>M</option>
-                            <option value="G" {% if form_data.tamanho_camiseta == 'G' %}selected{% endif %}>G</option>
-                            <option value="GG" {% if form_data.tamanho_camiseta == 'GG' %}selected{% endif %}>GG</option>
-                            <option value="XG" {% if form_data.tamanho_camiseta == 'XG' %}selected{% endif %}>XG</option>
-                            <option value="BL_P" {% if form_data.tamanho_camiseta == 'BL_P' %}selected{% endif %}>Baby Look P</option>
-                            <option value="BL_M" {% if form_data.tamanho_camiseta == 'BL_M' %}selected{% endif %}>Baby Look M</option>
-                            <option value="BL_G" {% if form_data.tamanho_camiseta == 'BL_G' %}selected{% endif %}>Baby Look G</option>
-                            <option value="BL_GG" {% if form_data.tamanho_camiseta == 'BL_GG' %}selected{% endif %}>Baby Look GG</option>
+                            {% for codigo, nome in tamanhos_camiseta %}
+                                <option value="{{ codigo }}" {% if form_data.tamanho_camiseta == codigo %}selected{% endif %}>
+                                    {{ nome }}
+                                </option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="flex items-center justify-center">
@@ -218,7 +233,7 @@
     </div>
 </section>
 
-<!-- JavaScript for form formatting -->
+<!-- JavaScript -->
 <script>
 function formatarCPF(input) {
     let value = input.value.replace(/\D/g, '');
@@ -237,6 +252,59 @@ function formatarTelefone(input) {
     }
     input.value = value;
 }
+
+// Funcionalidade de busca de agências
+function filtrarAgencias() {
+    const input = document.getElementById('agencia-search');
+    const dropdown = document.getElementById('agencias-dropdown');
+    const filter = input.value.toLowerCase();
+    const opcoes = dropdown.getElementsByClassName('agencia-option');
+
+    // Mostrar dropdown se há texto
+    if (filter.length > 0) {
+        dropdown.classList.remove('hidden');
+        
+        let hasVisibleOptions = false;
+        
+        for (let i = 0; i < opcoes.length; i++) {
+            const codigo = opcoes[i].getAttribute('data-codigo').toLowerCase();
+            const nome = opcoes[i].getAttribute('data-nome').toLowerCase();
+            
+            if (codigo.includes(filter) || nome.includes(filter)) {
+                opcoes[i].style.display = '';
+                hasVisibleOptions = true;
+            } else {
+                opcoes[i].style.display = 'none';
+            }
+        }
+        
+        // Se não há opções visíveis, esconder dropdown
+        if (!hasVisibleOptions) {
+            dropdown.classList.add('hidden');
+        }
+    } else {
+        dropdown.classList.add('hidden');
+    }
+}
+
+function selecionarAgencia(codigo, nome) {
+    const input = document.getElementById('agencia-search');
+    const dropdown = document.getElementById('agencias-dropdown');
+    
+    // Como a model já tem formato "001 - Matriz Patrocinio", usar o nome diretamente
+    input.value = nome;
+    dropdown.classList.add('hidden');
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click', function(event) {
+    const input = document.getElementById('agencia-search');
+    const dropdown = document.getElementById('agencias-dropdown');
+    
+    if (!input.contains(event.target) && !dropdown.contains(event.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
 
 // Smooth scroll for anchor links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
