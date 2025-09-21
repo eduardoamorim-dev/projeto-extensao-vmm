@@ -109,7 +109,6 @@ def cadastro_voluntario(request):
                 agencia=agencia,  # Salvar apenas o código
                 setor=setor,
                 tamanho_camiseta=tamanho_camiseta,
-                experiencia_anterior=experiencia_anterior if experiencia_anterior else None,
                 cargo=""  # Campo vazio para ser preenchido pelo admin
             )
 
@@ -134,6 +133,7 @@ def cadastro_voluntario(request):
             else:
                 messages.error(request, "Erro ao processar inscrição. Tente novamente.")
             
+
             return render(request, 'cadastro_voluntario.html', {
                 'form_data': request.POST,
                 'agencias': Voluntario.AGENCIAS_CHOICES,
@@ -235,9 +235,11 @@ def lista_voluntarios(request):
             'nome': get_nome_tamanho(item['tamanho_camiseta']),
             'total': item['total']
         })
+
+        
     
     context = {
-        'voluntarios': voluntarios_page,  # Dados paginados
+        'voluntarios': voluntarios_page,  
         'agencias': Voluntario.AGENCIAS_CHOICES,
         'status_choices': Voluntario.STATUS_CHOICES,
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
@@ -267,6 +269,7 @@ def editar_voluntario(request, voluntario_id):
     
     if request.method == "POST":
         try:
+            # Capturar dados do formulário
             voluntario.nome_completo = request.POST.get('nome_completo', '').strip()
             voluntario.email_corporativo = request.POST.get('email_corporativo', '').strip().lower()
             voluntario.cpf = request.POST.get('cpf', '').strip()
@@ -276,7 +279,10 @@ def editar_voluntario(request, voluntario_id):
             voluntario.tamanho_camiseta = request.POST.get('tamanho_camiseta', '')
             voluntario.cargo = request.POST.get('cargo', '').strip()
             voluntario.status = request.POST.get('status', '')
-            voluntario.experiencia_anterior = request.POST.get('experiencia_anterior', '').strip()
+            
+            # Tratar experiencia_anterior - converter None para vazio
+            experiencia_raw = request.POST.get('experiencia_anterior', '').strip()
+            voluntario.experiencia_anterior = experiencia_raw if experiencia_raw and experiencia_raw != 'None' else None
             
             # Validações básicas
             errors = []
@@ -319,16 +325,19 @@ def editar_voluntario(request, voluntario_id):
             if errors:
                 for error in errors:
                     messages.error(request, error)
-
+                # Formatar CPF para exibição em caso de erro
                 cpf_formatado = voluntario.formatar_cpf(voluntario.cpf) if voluntario.cpf else ''
+                experiencia_display = voluntario.experiencia_anterior if voluntario.experiencia_anterior and voluntario.experiencia_anterior != 'None' else ''
                 return render(request, 'editar_voluntario.html', {
                     'voluntario': voluntario,
                     'cpf_formatado': cpf_formatado,
+                    'experiencia_display': experiencia_display,
                     'agencias': Voluntario.AGENCIAS_CHOICES,
                     'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
                     'status_choices': Voluntario.STATUS_CHOICES,
                 })
             
+            # Limpar CPF para armazenamento
             voluntario.cpf = re.sub(r'[^\d]', '', voluntario.cpf)
             
             voluntario.save()
@@ -349,15 +358,16 @@ def editar_voluntario(request, voluntario_id):
     
     # Formatar CPF para exibição (GET request ou erros)
     cpf_formatado = voluntario.formatar_cpf(voluntario.cpf) if voluntario.cpf else ''
+    experiencia_display = voluntario.experiencia_anterior if voluntario.experiencia_anterior and voluntario.experiencia_anterior != 'None' else ''
     
     return render(request, 'editar_voluntario.html', {
         'voluntario': voluntario,
         'cpf_formatado': cpf_formatado,
+        'experiencia_display': experiencia_display,
         'agencias': Voluntario.AGENCIAS_CHOICES,
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
         'status_choices': Voluntario.STATUS_CHOICES,
     })
-
 
 @csrf_protect
 @require_http_methods(["POST"])

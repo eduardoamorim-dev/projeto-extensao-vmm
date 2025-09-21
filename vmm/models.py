@@ -65,7 +65,7 @@ class Voluntario(models.Model):
     cargo = models.CharField(max_length=100, verbose_name="Cargo a desempenhar no evento")
     experiencia_anterior = models.TextField(
         blank=True, 
-        null=True,
+        null=False,
         help_text="Experiências anteriores em voluntariado",
         verbose_name="Experiência Anterior"
     )

@@ -242,7 +242,9 @@ function formatarCPF(input) {
     value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
     input.value = value;
 }
+</script>
 
+<script>
 function formatarTelefone(input) {
     let value = input.value.replace(/\D/g, '');
     if (value.length <= 10) {
@@ -252,7 +254,9 @@ function formatarTelefone(input) {
     }
     input.value = value;
 }
+</script>
 
+<script>
 // Funcionalidade de busca de agências
 function filtrarAgencias() {
     const input = document.getElementById('agencia-search');
@@ -260,29 +264,25 @@ function filtrarAgencias() {
     const filter = input.value.toLowerCase();
     const opcoes = dropdown.getElementsByClassName('agencia-option');
 
-    // Mostrar dropdown se há texto
-    if (filter.length > 0) {
-        dropdown.classList.remove('hidden');
+    // Sempre mostrar dropdown quando há foco no campo
+    dropdown.classList.remove('hidden');
+    
+    let hasVisibleOptions = false;
+    
+    for (let i = 0; i < opcoes.length; i++) {
+        const codigo = opcoes[i].getAttribute('data-codigo').toLowerCase();
+        const nome = opcoes[i].getAttribute('data-nome').toLowerCase();
         
-        let hasVisibleOptions = false;
-        
-        for (let i = 0; i < opcoes.length; i++) {
-            const codigo = opcoes[i].getAttribute('data-codigo').toLowerCase();
-            const nome = opcoes[i].getAttribute('data-nome').toLowerCase();
-            
-            if (codigo.includes(filter) || nome.includes(filter)) {
-                opcoes[i].style.display = '';
-                hasVisibleOptions = true;
-            } else {
-                opcoes[i].style.display = 'none';
-            }
+        if (filter.length === 0 || codigo.includes(filter) || nome.includes(filter)) {
+            opcoes[i].style.display = '';
+            hasVisibleOptions = true;
+        } else {
+            opcoes[i].style.display = 'none';
         }
-        
-        // Se não há opções visíveis, esconder dropdown
-        if (!hasVisibleOptions) {
-            dropdown.classList.add('hidden');
-        }
-    } else {
+    }
+    
+    // Se não há opções visíveis, esconder dropdown
+    if (!hasVisibleOptions) {
         dropdown.classList.add('hidden');
     }
 }
@@ -291,11 +291,25 @@ function selecionarAgencia(codigo, nome) {
     const input = document.getElementById('agencia-search');
     const dropdown = document.getElementById('agencias-dropdown');
     
-    // Como a model já tem formato "001 - Matriz Patrocinio", usar o nome diretamente
     input.value = nome;
     dropdown.classList.add('hidden');
 }
 
+// Mostrar dropdown ao focar no campo
+document.getElementById('agencia-search').addEventListener('focus', function() {
+    filtrarAgencias(); // Mostra todas as opções
+});
+
+// Esconder dropdown ao sair do campo (com delay para permitir clique)
+document.getElementById('agencia-search').addEventListener('blur', function() {
+    setTimeout(function() {
+        document.getElementById('agencias-dropdown').classList.add('hidden');
+    }, 200);
+});
+</script>
+
+
+<script>
 // Fechar dropdown ao clicar fora
 document.addEventListener('click', function(event) {
     const input = document.getElementById('agencia-search');
@@ -305,7 +319,9 @@ document.addEventListener('click', function(event) {
         dropdown.classList.add('hidden');
     }
 });
+</script>
 
+<script>
 // Smooth scroll for anchor links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {

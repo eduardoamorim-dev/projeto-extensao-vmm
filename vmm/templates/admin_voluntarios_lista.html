@@ -127,12 +127,12 @@
                 <h3 class="text-lg font-bold primary-color mb-4">Voluntários por Agência</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {% for agencia in agencias_stats %}
-                        <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="bg-gray-50 rounded-lg p-4 text-center">
                             <div class="text-sm font-medium text-gray-600">
                                 {{ agencia.nome }}
                             </div>
                             <div class="text-2xl font-bold primary-color">
-                                {{ agencia.total }} voluntários
+                                {{ agencia.total }}
                             </div>
                         </div>
                     {% endfor %}
@@ -183,39 +183,43 @@
                     <div class="flex flex-col">
                         <label class="text-sm font-medium text-gray-700 mb-1">Agências:</label>
                         <div class="relative">
-                            <select name="agencia" 
-                                    multiple 
-                                    size="1"
-                                    class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 w-48"
-                                    onchange="updateMultiSelect(this)"
-                                    onclick="toggleDropdown(event)">
-                                <option value="">Todas as agências</option>
-                                {% for codigo, nome in agencias %}
-                                    <option value="{{ codigo }}" 
-                                            {% if codigo in agencias_filtro %}selected{% endif %}>
-                                        {{ nome }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+                            <!-- Campo de exibição das seleções -->
+                            <div class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 w-48 cursor-pointer bg-white"
+                                onclick="toggleAgenciasDropdown()"
+                                id="agencias-display">
+                                <span id="agencias-selected-text">
+                                    {% if agencias_filtro %}
+                                        {{ agencias_filtro|length }} selecionada{{ agencias_filtro|length|pluralize }}
+                                    {% else %}
+                                        Todas as agências
+                                    {% endif %}
+                                </span>
+                                <span class="float-right">▼</span>
+                            </div>
                             
-                            <!-- Dropdown customizado para multi-select -->
+                            <!-- Dropdown customizado -->
                             <div id="agencias-multi-dropdown" class="absolute z-20 w-full bg-white border-2 border-gray-200 rounded-lg mt-1 max-h-48 overflow-y-auto hidden shadow-lg">
                                 <div class="p-2">
+                                    <!-- Opção "Todas" -->
                                     <label class="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer">
                                         <input type="checkbox" 
                                             value="" 
-                                            class="mr-2 agencia-checkbox"
-                                            onchange="handleAgenciaChange()"
+                                            class="mr-2 agencia-checkbox-all"
+                                            onchange="handleTodasAgencias(this)"
                                             {% if not agencias_filtro %}checked{% endif %}>
                                         <span class="text-sm font-medium">Todas as agências</span>
                                     </label>
+                                    
+                                    <hr class="my-2">
+                                    
+                                    <!-- Opções específicas -->
                                     {% for codigo, nome in agencias %}
                                         <label class="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer">
                                             <input type="checkbox" 
                                                 name="agencia" 
                                                 value="{{ codigo }}" 
-                                                class="mr-2 agencia-checkbox"
-                                                onchange="handleAgenciaChange()"
+                                                class="mr-2 agencia-checkbox-item"
+                                                onchange="handleAgenciaEspecifica()"
                                                 {% if codigo in agencias_filtro %}checked{% endif %}>
                                             <span class="text-sm">{{ nome }}</span>
                                         </label>
@@ -241,13 +245,13 @@
                     <!-- Botões -->
                     <div class="flex space-x-2">
                         <button type="submit" class="accent-gradient text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap">
-                            Filtrar
+                            <i class="fa-solid fa-filter mr-2"></i> Filtrar
                         </button>
                         <a href="{% url 'vmm:lista_voluntarios' %}" class="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors whitespace-nowrap">
-                            Limpar
+                            <i class="fa-solid fa-delete-left mr-2"></i> Limpar
                         </a>
                         <button type="button" onclick="window.print()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap">
-                            Imprimir
+                            <i class="fa-solid fa-print mr-2"></i> Imprimir
                         </button>
                     </div>
                 </form>
@@ -327,10 +331,17 @@
 
                                 <!-- Coluna de Ações -->
                                 <td class="px-6 py-4 text-center no-print">
-                                    <div class="flex justify-center space-x-2">
+                                    <div class="flex justify-center space-x-3">
+                                        <button onclick="toggleDetalhes({{ voluntario.id }})" 
+                                                class="inline-flex items-center justify-center text-xs text-teal-600 hover:text-teal-800 font-semibold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors w-25 h-8">
+                                            <span id="btn-text-{{ voluntario.id }}">
+                                                <i class="fa-solid fa-eye mr-2"></i>Detalhes
+                                            </span>
+                                        </button>
+
                                         <a href="{% url 'vmm:editar_voluntario' voluntario.id %}" 
-                                        class="inline-flex items-center justify-center text-xs text-blue-600 hover:text-blue-800 font-semibold bg-blue-100 hover:bg-blue-200 px-3 py-2 rounded-lg transition-colors w-16 h-8">
-                                            Editar
+                                        class="inline-flex items-center justify-center text-xs text-blue-600 hover:text-blue-800 font-semibold bg-blue-100 hover:bg-blue-200 px-3 py-2 rounded-lg transition-colors w-25 h-8">
+                                            <i class="fa-solid fa-pen-to-square mr-2"></i>Editar
                                         </a>
                                         
                                         <form method="POST" action="{% url 'vmm:excluir_voluntario' voluntario.id %}" 
@@ -338,15 +349,10 @@
                                             onsubmit="return confirm('Tem certeza que deseja excluir o voluntário {{ voluntario.nome_completo|escapejs }}? Esta ação não pode ser desfeita.')">
                                             {% csrf_token %}
                                             <button type="submit" 
-                                                    class="inline-flex items-center justify-center text-xs text-red-600 hover:text-red-800 font-semibold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors w-16 h-8">
-                                                Excluir
+                                                    class="inline-flex items-center justify-center text-xs text-red-600 hover:text-red-800 font-semibold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors w-25 h-8">
+                                                <i class="fa-solid fa-trash mr-2"></i> Excluir
                                             </button>
                                         </form>
-                                        
-                                        <button onclick="toggleDetalhes({{ voluntario.id }})" 
-                                                class="inline-flex items-center justify-center text-xs text-teal-600 hover:text-teal-800 font-semibold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors w-20 h-8">
-                                            <span id="btn-text-{{ voluntario.id }}">Detalhes</span>
-                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -406,12 +412,11 @@
                                                 </div>
                                             </div>
                                             
-                                            <!-- Experiência (span completo se existir) -->
-                                            {% if voluntario.experiencia_anterior %}
+                                            {% if voluntario.experiencia_anterior != none %}
                                             <div class="md:col-span-4">
                                                 <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Experiência/Disponibilidade</div>
                                                 <div class="text-sm text-gray-700 bg-gray-100 p-3 rounded-lg border-l-4 border-teal-400">
-                                                    {{ voluntario.experiencia_anterior }}
+                                                    {{ voluntario.experiencia_anterior|default:"Sem experiência informada" }}   
                                                 </div>
                                             </div>
                                             {% endif %}
@@ -498,10 +503,10 @@
         
         if (detalhes.classList.contains('hidden')) {
             detalhes.classList.remove('hidden');
-            btnText.textContent = 'Ocultar detalhes';
+            btnText.innerHTML = '<i class="fa-solid fa-eye-slash mr-2"></i> Ocultar detalhes';
         } else {
             detalhes.classList.add('hidden');
-            btnText.textContent = 'Ver detalhes';
+            btnText.innerHTML = '<i class="fa-solid fa-eye mr-2"></i> Ver detalhes';
         }
     }
 
@@ -513,5 +518,73 @@
     window.addEventListener('afterprint', function() {
         document.body.classList.remove('printing');
     });
+</script>
+
+<script>
+// Multi-select para agências
+function toggleAgenciasDropdown() {
+    const dropdown = document.getElementById('agencias-multi-dropdown');
+    dropdown.classList.toggle('hidden');
+}
+
+function handleTodasAgencias(checkbox) {
+    const itemCheckboxes = document.querySelectorAll('.agencia-checkbox-item');
+    
+    if (checkbox.checked) {
+        // Desmarcar todas as específicas
+        itemCheckboxes.forEach(cb => cb.checked = false);
+    }
+    
+    updateDisplayText();
+}
+
+function handleAgenciaEspecifica() {
+    const allCheckbox = document.querySelector('.agencia-checkbox-all');
+    const itemCheckboxes = document.querySelectorAll('.agencia-checkbox-item');
+    
+    // Se alguma específica foi marcada, desmarcar "Todas"
+    const anyChecked = Array.from(itemCheckboxes).some(cb => cb.checked);
+    
+    if (anyChecked) {
+        allCheckbox.checked = false;
+    } else {
+        // Se nenhuma está marcada, marcar "Todas"
+        allCheckbox.checked = true;
+    }
+    
+    updateDisplayText();
+}
+
+function updateDisplayText() {
+    const allCheckbox = document.querySelector('.agencia-checkbox-all');
+    const itemCheckboxes = document.querySelectorAll('.agencia-checkbox-item:checked');
+    const displayText = document.getElementById('agencias-selected-text');
+    
+    if (allCheckbox.checked) {
+        displayText.textContent = 'Todas as agências';
+    } else if (itemCheckboxes.length === 0) {
+        displayText.textContent = 'Nenhuma selecionada';
+        allCheckbox.checked = true; // Auto-marcar "Todas" se nada selecionado
+    } else if (itemCheckboxes.length === 1) {
+        displayText.textContent = '1 selecionada';
+    } else {
+        displayText.textContent = `${itemCheckboxes.length} selecionadas`;
+    }
+}
+
+// Fechar dropdown ao clicar fora
+document.addEventListener('click', function(event) {
+    const dropdown = document.getElementById('agencias-multi-dropdown');
+    const display = document.getElementById('agencias-display');
+    
+    if (dropdown && !dropdown.contains(event.target) && !display.contains(event.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
+
+// Inicializar o texto na carga da página
+document.addEventListener('DOMContentLoaded', function() {
+    updateDisplayText();
+});
 </script>
 {% endblock %}
