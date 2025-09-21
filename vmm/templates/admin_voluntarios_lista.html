@@ -201,9 +201,9 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         {% for voluntario in voluntarios %}
-                            <tr class="hover:bg-gray-50 transition-colors">
+                            <tr class="hover:bg-gray-50 transition-colors" id="row-{{ voluntario.id }}">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div>
+                                    <div class="editable-content" id="nome-{{ voluntario.id }}">
                                         <div class="text-sm font-bold text-gray-900">
                                             {{ voluntario.nome_completo }}
                                         </div>
@@ -214,57 +214,84 @@
                                 </td>
                                 
                                 <td class="px-6 py-4">
-                                    <div class="text-sm text-gray-900">
-                                        {{ voluntario.email_corporativo }}
-                                    </div>
-                                    <div class="text-sm text-gray-500">
-                                        {{ voluntario.telefone }}
+                                    <div class="editable-content" id="contato-{{ voluntario.id }}">
+                                        <div class="text-sm text-gray-900">
+                                            {{ voluntario.email_corporativo }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ voluntario.telefone }}
+                                        </div>
                                     </div>
                                 </td>
                                 
                                 <td class="px-6 py-4">
-                                    <div class="text-sm font-medium text-gray-900">
-                                        {{ voluntario.get_agencia_display }}
-                                    </div>
-                                    <div class="text-sm text-gray-500">
-                                        {{ voluntario.setor }}
+                                    <div class="editable-content" id="agencia-{{ voluntario.id }}">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ voluntario.get_agencia_display }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ voluntario.setor }}
+                                        </div>
                                     </div>
                                 </td>
                                 
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                        {{ voluntario.get_tamanho_camiseta_display }}
-                                    </span>
+                                    <div class="editable-content" id="camiseta-{{ voluntario.id }}">
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                            {{ voluntario.get_tamanho_camiseta_display }}
+                                        </span>
+                                    </div>
                                 </td>
                                 
                                 <td class="px-6 py-4">
-                                    <div class="text-sm text-gray-900">
-                                        {% if voluntario.cargo %}
-                                            {{ voluntario.cargo }}
+                                    <div class="editable-content" id="cargo-{{ voluntario.id }}">
+                                        <div class="text-sm text-gray-900">
+                                            {% if voluntario.cargo %}
+                                                {{ voluntario.cargo }}
+                                            {% else %}
+                                                <span class="text-gray-400 italic">A definir</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="editable-content" id="status-{{ voluntario.id }}">
+                                        {% if voluntario.status == 'ativo' %}
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                                ✅ {{ voluntario.get_status_display }}
+                                            </span>
                                         {% else %}
-                                            <span class="text-gray-400 italic">A definir</span>
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                                                ❌ {{ voluntario.get_status_display }}
+                                            </span>
                                         {% endif %}
                                     </div>
-                                </td>
-                                
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    {% if voluntario.status == 'ativo' %}
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                            {{ voluntario.get_status_display }}
-                                        </span>
-                                    {% else %}
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                                            ❌ {{ voluntario.get_status_display }}
-                                        </span>
-                                    {% endif %}
                                 </td>
 
                                 <!-- Coluna de Ações -->
                                 <td class="px-6 py-4 text-center no-print">
-                                    <button onclick="toggleDetalhes({{ voluntario.id }})" 
-                                            class="text-sm text-teal-600 hover:text-teal-800 font-semibold bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg transition-colors">
-                                        <span id="btn-text-{{ voluntario.id }}">Ver detalhes</span>
-                                    </button>
+                                    <div class="flex justify-center space-x-2">
+                                        <button onclick="toggleDetalhes({{ voluntario.id }})" 
+                                                class="inline-flex items-center justify-center text-xs text-teal-600 hover:text-teal-800 font-semibold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors w-20 h-8">
+                                            <span id="btn-text-{{ voluntario.id }}">Detalhes</span>
+                                        </button>
+
+                                        <a href="{% url 'vmm:editar_voluntario' voluntario.id %}" 
+                                        class="inline-flex items-center justify-center text-xs text-blue-600 hover:text-blue-800 font-semibold bg-blue-100 hover:bg-blue-200 px-3 py-2 rounded-lg transition-colors w-16 h-8">
+                                            Editar
+                                        </a>
+                                        
+                                        <form method="POST" action="{% url 'vmm:excluir_voluntario' voluntario.id %}" 
+                                            style="display: inline;" 
+                                            onsubmit="return confirm('Tem certeza que deseja excluir o voluntário {{ voluntario.nome_completo|escapejs }}? Esta ação não pode ser desfeita.')">
+                                            {% csrf_token %}
+                                            <button type="submit" 
+                                                    class="inline-flex items-center justify-center text-xs text-red-600 hover:text-red-800 font-semibold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors w-16 h-8">
+                                                Excluir
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
 
@@ -311,7 +338,7 @@
                             <tr>
                                 <td colspan="8" class="px-6 py-12 text-center">
                                     <div class="text-gray-500">
-                                        <span class="text-4xl mb-4 block"></span>
+                                        <span class="text-4xl mb-4 block">👥</span>
                                         <p class="text-lg font-medium">Nenhum voluntário encontrado</p>
                                         <p class="text-sm">Tente ajustar os filtros ou aguarde novas inscrições</p>
                                     </div>
@@ -323,78 +350,62 @@
             </div>
         </div>
 
-    <!-- Resumo -->
-    {% if voluntarios %}
-        <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-bold primary-color mb-4">Voluntários por Agência</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {% for agencia in agencias_stats %}
-                    <div class="bg-gray-50 rounded-lg p-4">
-                        <div class="text-sm font-medium text-gray-600">
-                            {{ agencia.nome }}
+        <!-- Resumo -->
+        {% if voluntarios %}
+            <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-bold primary-color mb-4">Voluntários por Agência</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {% for agencia in agencias_stats %}
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="text-sm font-medium text-gray-600">
+                                {{ agencia.nome }}
+                            </div>
+                            <div class="text-2xl font-bold primary-color">
+                                {{ agencia.total }} voluntários
+                            </div>
                         </div>
-                        <div class="text-2xl font-bold primary-color">
-                            {{ agencia.total }} voluntários
+                    {% endfor %}
+                </div>
+                
+                <h3 class="text-lg font-bold primary-color mb-4 mt-6">Camisetas</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {% for camiseta in camisetas_stats %}
+                        <div class="bg-blue-50 rounded-lg p-3 text-center">
+                            <div class="text-sm font-medium text-blue-600">
+                                {{ camiseta.nome }}
+                            </div>
+                            <div class="text-xl font-bold text-blue-800">
+                                {{ camiseta.total }}
+                            </div>
                         </div>
-                    </div>
-                {% endfor %}
+                    {% endfor %}
+                </div>
             </div>
-            
-            <h3 class="text-lg font-bold primary-color mb-4 mt-6">Camisetas</h3>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {% for camiseta in camisetas_stats %}
-                    <div class="bg-blue-50 rounded-lg p-3 text-center">
-                        <div class="text-sm font-medium text-blue-600">
-                            {{ camiseta.nome }}
-                        </div>
-                        <div class="text-xl font-bold text-blue-800">
-                            {{ camiseta.total }}
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
+        {% endif %}
     </main>
 
-    <script>
-        // Função para ver detalhes
-        function toggleDetalhes(id) {
-            const detalhes = document.getElementById('detalhes-' + id);
-            const btnText = document.getElementById('btn-text-' + id);
-            
-            if (detalhes.classList.contains('hidden')) {
-                detalhes.classList.remove('hidden');
-                btnText.textContent = 'Ocultar detalhes';
-            } else {
-                detalhes.classList.add('hidden');
-                btnText.textContent = 'Ver detalhes';
-            }
+<script>
+    // Função para ver detalhes
+    function toggleDetalhes(id) {
+        const detalhes = document.getElementById('detalhes-' + id);
+        const btnText = document.getElementById('btn-text-' + id);
+        
+        if (detalhes.classList.contains('hidden')) {
+            detalhes.classList.remove('hidden');
+            btnText.textContent = 'Ocultar detalhes';
+        } else {
+            detalhes.classList.add('hidden');
+            btnText.textContent = 'Ver detalhes';
         }
+    }
 
-        // Auto-refresh functionality (optional)
-        function refreshData() {
-            if (confirm('Deseja atualizar os dados da página?')) {
-                window.location.reload();
-            }
-        }
-        
-        // Auto refresh every 5 minutes (optional)
-        // setInterval(refreshData, 300000);
-        
-        // Export functionality
-        function exportToCSV() {
-            // This would be implemented based on your needs
-            alert('Funcionalidade de exportação em desenvolvimento');
-        }
-        
-        // Print optimization
-        window.addEventListener('beforeprint', function() {
-            document.body.classList.add('printing');
-        });
-        
-        window.addEventListener('afterprint', function() {
-            document.body.classList.remove('printing');
-        });
-    </script>
+    // Print optimization
+    window.addEventListener('beforeprint', function() {
+        document.body.classList.add('printing');
+    });
+
+    window.addEventListener('afterprint', function() {
+        document.body.classList.remove('printing');
+    });
+</script>
 {% endblock %}

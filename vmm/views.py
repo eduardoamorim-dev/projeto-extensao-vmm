@@ -1,13 +1,13 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
+from django.db.models import Count
 from .models import Voluntario
 import re
 
-# As choices agora vêm diretamente da model
 
 @csrf_protect
 @require_http_methods(["GET", "POST"])
@@ -27,7 +27,7 @@ def cadastro_voluntario(request):
             tamanho_camiseta = request.POST.get('tamanho_camiseta', '')
             experiencia_anterior = request.POST.get('experiencia_anterior', '').strip()
 
-            # Processar agência (extrair código se veio no formato "001 - 001 - Nome da Agência")
+            # Processar agência (extrair código se veio no formato "001 - Nome da Agência")
             agencia = agencia_raw
             if ' - ' in agencia_raw:
                 agencia = agencia_raw.split(' - ')[0].strip()
@@ -115,7 +115,6 @@ def cadastro_voluntario(request):
                 "sua candidatura foi registrada e será analisada pela equipe organizadora."
             )
             
-            # Redirecionar para evitar reenvio do formulário e limpar campos
             return redirect('vmm:cadastro_voluntario') 
 
         except IntegrityError as e:
@@ -137,7 +136,6 @@ def cadastro_voluntario(request):
             })
             
         except Exception as e:
-            # Log do erro para debug
             print(f"Erro inesperado no cadastro: {e}")
             
             messages.error(
@@ -158,49 +156,11 @@ def cadastro_voluntario(request):
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
     })
 
-def validar_cpf(cpf):
-    """
-    Valida se o CPF é válido usando o algoritmo oficial
-    """
-    # Remove caracteres não numéricos
-    cpf = re.sub(r'[^\d]', '', cpf)
-    
-    # Verifica se tem 11 dígitos
-    if len(cpf) != 11:
-        return False
-    
-    # Verifica se todos os dígitos são iguais
-    if cpf == cpf[0] * 11:
-        return False
-    
-    # Calcula o primeiro dígito verificador
-    soma = 0
-    for i in range(9):
-        soma += int(cpf[i]) * (10 - i)
-    resto = soma % 11
-    digito1 = 0 if resto < 2 else 11 - resto
-    
-    # Verifica o primeiro dígito
-    if int(cpf[9]) != digito1:
-        return False
-    
-    # Calcula o segundo dígito verificador
-    soma = 0
-    for i in range(10):
-        soma += int(cpf[i]) * (11 - i)
-    resto = soma % 11
-    digito2 = 0 if resto < 2 else 11 - resto
-    
-    # Verifica o segundo dígito
-    return int(cpf[10]) == digito2
 
-# View adicional para listar voluntários (para admin)
 def lista_voluntarios(request):
     """
     View para listar todos os voluntários (apenas para staff)
     """
-    from django.db.models import Count
-    
     # Buscar todos os voluntários para estatísticas gerais
     todos_voluntarios = Voluntario.objects.all()
     voluntarios = todos_voluntarios.order_by('-data_cadastro')
@@ -269,13 +229,171 @@ def lista_voluntarios(request):
 
     return render(request, 'admin_voluntarios_lista.html', context)
 
-# Função auxiliar para obter dados das choices 
+
+@csrf_protect
+def editar_voluntario(request, voluntario_id):
+    """
+    View para editar voluntário
+    """
+    voluntario = get_object_or_404(Voluntario, id=voluntario_id)
+    
+    if request.method == "POST":
+        try:
+            voluntario.nome_completo = request.POST.get('nome_completo', '').strip()
+            voluntario.email_corporativo = request.POST.get('email_corporativo', '').strip().lower()
+            voluntario.cpf = request.POST.get('cpf', '').strip()
+            voluntario.telefone = request.POST.get('telefone', '').strip()
+            voluntario.agencia = request.POST.get('agencia', '')
+            voluntario.setor = request.POST.get('setor', '').strip()
+            voluntario.tamanho_camiseta = request.POST.get('tamanho_camiseta', '')
+            voluntario.cargo = request.POST.get('cargo', '').strip()
+            voluntario.status = request.POST.get('status', '')
+            voluntario.experiencia_anterior = request.POST.get('experiencia_anterior', '').strip()
+            
+            # Validações básicas
+            errors = []
+            
+            if not voluntario.nome_completo or len(voluntario.nome_completo) < 3:
+                errors.append("Nome deve ter pelo menos 3 caracteres.")
+                
+            if not voluntario.email_corporativo.endswith('@sicoob.com.br'):
+                errors.append("Email deve ser do domínio @sicoob.com.br")
+                
+            # Validar CPF
+            if voluntario.cpf:
+                cpf_limpo = re.sub(r'[^\d]', '', voluntario.cpf)
+                if len(cpf_limpo) != 11:
+                    errors.append("CPF deve conter 11 dígitos.")
+                elif not validar_cpf(cpf_limpo):
+                    errors.append("CPF inválido.")
+                    
+            # Validar telefone
+            if voluntario.telefone:
+                telefone_pattern = r'^\(\d{2}\)\s\d{4,5}-\d{4}$'
+                if not re.match(telefone_pattern, voluntario.telefone):
+                    errors.append("Telefone deve estar no formato: (11) 99999-9999")
+                    
+            # Validar agência
+            agencias_validas = [codigo for codigo, nome in Voluntario.AGENCIAS_CHOICES]
+            if voluntario.agencia not in agencias_validas:
+                errors.append("Agência selecionada não é válida.")
+                
+            # Validar tamanho
+            tamanhos_validos = [codigo for codigo, nome in Voluntario.TAMANHOS_CAMISETA]
+            if voluntario.tamanho_camiseta not in tamanhos_validos:
+                errors.append("Tamanho da camiseta selecionado não é válido.")
+                
+            # Validar status
+            status_validos = [codigo for codigo, nome in Voluntario.STATUS_CHOICES]
+            if voluntario.status not in status_validos:
+                errors.append("Status selecionado não é válido.")
+            
+            if errors:
+                for error in errors:
+                    messages.error(request, error)
+
+                cpf_formatado = voluntario.formatar_cpf(voluntario.cpf) if voluntario.cpf else ''
+                return render(request, 'editar_voluntario.html', {
+                    'voluntario': voluntario,
+                    'cpf_formatado': cpf_formatado,
+                    'agencias': Voluntario.AGENCIAS_CHOICES,
+                    'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
+                    'status_choices': Voluntario.STATUS_CHOICES,
+                })
+            
+            voluntario.cpf = re.sub(r'[^\d]', '', voluntario.cpf)
+            
+            voluntario.save()
+            messages.success(request, f'Voluntário {voluntario.nome_completo} atualizado com sucesso!')
+            return redirect('vmm:lista_voluntarios')
+            
+        except IntegrityError as e:
+            error_message = str(e).lower()
+            if 'email_corporativo' in error_message:
+                messages.error(request, "Este email já está cadastrado por outro voluntário.")
+            elif 'cpf' in error_message:
+                messages.error(request, "Este CPF já está cadastrado por outro voluntário.")
+            else:
+                messages.error(request, "Já existe um cadastro com essas informações.")
+                
+        except Exception as e:
+            messages.error(request, "Erro inesperado ao atualizar voluntário.")
+    
+    # Formatar CPF para exibição (GET request ou erros)
+    cpf_formatado = voluntario.formatar_cpf(voluntario.cpf) if voluntario.cpf else ''
+    
+    return render(request, 'editar_voluntario.html', {
+        'voluntario': voluntario,
+        'cpf_formatado': cpf_formatado,
+        'agencias': Voluntario.AGENCIAS_CHOICES,
+        'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
+        'status_choices': Voluntario.STATUS_CHOICES,
+    })
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def excluir_voluntario(request, voluntario_id):
+    """
+    View para excluir voluntário
+    """
+    voluntario = get_object_or_404(Voluntario, id=voluntario_id)
+    nome = voluntario.nome_completo
+    
+    try:
+        voluntario.delete()
+        messages.success(request, f'Voluntário {nome} excluído com sucesso!')
+    except Exception as e:
+        messages.error(request, 'Erro ao excluir voluntário.')
+    
+    return redirect('vmm:lista_voluntarios')
+
+
+def validar_cpf(cpf):
+    """
+    Valida se o CPF é válido usando o algoritmo oficial
+    """
+    # Remove caracteres não numéricos
+    cpf = re.sub(r'[^\d]', '', cpf)
+    
+    # Verifica se tem 11 dígitos
+    if len(cpf) != 11:
+        return False
+    
+    # Verifica se todos os dígitos são iguais
+    if cpf == cpf[0] * 11:
+        return False
+    
+    # Calcula o primeiro dígito verificador
+    soma = 0
+    for i in range(9):
+        soma += int(cpf[i]) * (10 - i)
+    resto = soma % 11
+    digito1 = 0 if resto < 2 else 11 - resto
+    
+    # Verifica o primeiro dígito
+    if int(cpf[9]) != digito1:
+        return False
+    
+    # Calcula o segundo dígito verificador
+    soma = 0
+    for i in range(10):
+        soma += int(cpf[i]) * (11 - i)
+    resto = soma % 11
+    digito2 = 0 if resto < 2 else 11 - resto
+    
+    # Verifica o segundo dígito
+    return int(cpf[10]) == digito2
+
+
+# Funções auxiliares para APIs 
 def get_agencias_json(request):
     """
     Retorna as agências em formato JSON para AJAX
     """
     from django.http import JsonResponse
     return JsonResponse({'agencias': Voluntario.AGENCIAS_CHOICES})
+
 
 def get_tamanhos_json(request):
     """
