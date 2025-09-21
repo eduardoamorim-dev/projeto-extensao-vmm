@@ -323,40 +323,38 @@
             </div>
         </div>
 
-        <!-- Resumo -->
-        {% if voluntarios %}
-            <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
-                <h3 class="text-lg font-bold primary-color mb-4">Voluntários por Agência</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {% regroup voluntarios by agencia as agencia_groups %}
-                    {% for agencia_group in agencia_groups %}
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <div class="text-sm font-medium text-gray-600">
-                                {{ agencia_group.list.0.get_agencia_display }}
-                            </div>
-                            <div class="text-2xl font-bold primary-color">
-                                {{ agencia_group.list|length }} voluntários
-                            </div>
+    <!-- Resumo -->
+    {% if voluntarios %}
+        <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-bold primary-color mb-4">Voluntários por Agência</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for agencia in agencias_stats %}
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="text-sm font-medium text-gray-600">
+                            {{ agencia.nome }}
                         </div>
-                    {% endfor %}
-                </div>
-                
-                <h3 class="text-lg font-bold primary-color mb-4 mt-6">Camisetas</h3>
-                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {% regroup voluntarios by tamanho_camiseta as tamanho_groups %}
-                    {% for tamanho_group in tamanho_groups %}
-                        <div class="bg-blue-50 rounded-lg p-3 text-center">
-                            <div class="text-sm font-medium text-blue-600">
-                                {{ tamanho_group.list.0.get_tamanho_camiseta_display }}
-                            </div>
-                            <div class="text-xl font-bold text-blue-800">
-                                {{ tamanho_group.list|length }}
-                            </div>
+                        <div class="text-2xl font-bold primary-color">
+                            {{ agencia.total }} voluntários
                         </div>
-                    {% endfor %}
-                </div>
+                    </div>
+                {% endfor %}
             </div>
-        {% endif %}
+            
+            <h3 class="text-lg font-bold primary-color mb-4 mt-6">Camisetas</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {% for camiseta in camisetas_stats %}
+                    <div class="bg-blue-50 rounded-lg p-3 text-center">
+                        <div class="text-sm font-medium text-blue-600">
+                            {{ camiseta.nome }}
+                        </div>
+                        <div class="text-xl font-bold text-blue-800">
+                            {{ camiseta.total }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
     </main>
 
     <script>

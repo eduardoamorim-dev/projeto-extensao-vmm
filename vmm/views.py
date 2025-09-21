@@ -199,13 +199,13 @@ def lista_voluntarios(request):
     """
     View para listar todos os voluntários (apenas para staff)
     """
-    # if not request.user.is_staff:
-    #     messages.error(request, "Acesso negado.")
-    #     return redirect('vmm:cadastro_voluntario')  
+    from django.db.models import Count
     
-    voluntarios = Voluntario.objects.all().order_by('-data_cadastro')
+    # Buscar todos os voluntários para estatísticas gerais
+    todos_voluntarios = Voluntario.objects.all()
+    voluntarios = todos_voluntarios.order_by('-data_cadastro')
     
-    # Filtros opcionais
+    # Filtros opcionais - aplicar apenas na listagem, não no resumo
     agencia_filtro = request.GET.get('agencia')
     status_filtro = request.GET.get('status')
     
@@ -215,24 +215,46 @@ def lista_voluntarios(request):
     if status_filtro:
         voluntarios = voluntarios.filter(status=status_filtro)
     
-    # Converter códigos de agência para nomes para exibição
+    # Estatísticas agregadas para evitar duplicação
+    voluntarios_por_agencia = (
+        todos_voluntarios.values('agencia')
+        .annotate(total=Count('id'))
+        .order_by('agencia')
+    )
+    
+    camisetas_por_tamanho = (
+        todos_voluntarios.values('tamanho_camiseta')
+        .annotate(total=Count('id'))
+        .order_by('tamanho_camiseta')
+    )
+    
+    # Converter códigos para nomes
     def get_nome_agencia(codigo):
         for cod, nome in Voluntario.AGENCIAS_CHOICES:
             if cod == codigo:
                 return nome
         return codigo
     
-    # Converter códigos de tamanho para nomes
     def get_nome_tamanho(codigo):
         for cod, nome in Voluntario.TAMANHOS_CAMISETA:
             if cod == codigo:
                 return nome
         return codigo
     
-    # Adicionar nomes às instâncias dos voluntários
-    for voluntario in voluntarios:
-        voluntario.nome_agencia = get_nome_agencia(voluntario.agencia)
-        voluntario.nome_tamanho = get_nome_tamanho(voluntario.tamanho_camiseta)
+    # Preparar dados para o template
+    agencias_stats = []
+    for item in voluntarios_por_agencia:
+        agencias_stats.append({
+            'nome': get_nome_agencia(item['agencia']),
+            'total': item['total']
+        })
+    
+    camisetas_stats = []
+    for item in camisetas_por_tamanho:
+        camisetas_stats.append({
+            'nome': get_nome_tamanho(item['tamanho_camiseta']),
+            'total': item['total']
+        })
     
     context = {
         'voluntarios': voluntarios,
@@ -241,11 +263,13 @@ def lista_voluntarios(request):
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
         'agencia_filtro': agencia_filtro,
         'status_filtro': status_filtro,
+        'agencias_stats': agencias_stats,
+        'camisetas_stats': camisetas_stats,
     }
 
     return render(request, 'admin_voluntarios_lista.html', context)
 
-# Função auxiliar para obter dados das choices (pode ser útil para APIs)
+# Função auxiliar para obter dados das choices 
 def get_agencias_json(request):
     """
     Retorna as agências em formato JSON para AJAX
