@@ -79,7 +79,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Total de Voluntários</p>
-                        <p class="text-2xl font-bold primary-color">{{ voluntarios.count }}</p>
+                        <p class="text-2xl font-bold primary-color">{{ total_voluntarios }}</p>
                     </div>
                 </div>
             </div>
@@ -91,7 +91,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600">Ativos</p>
-                        <p class="text-2xl font-bold text-blue-600">{{ voluntarios|length }}</p>
+                        <p class="text-2xl font-bold text-blue-600">{{ total_ativos }}</p>
                     </div>
                 </div>
             </div>
@@ -114,245 +114,16 @@
                         <span class="text-3xl"></span>
                     </div>
                     <div class="ml-4">
-                        <p class="text-sm font-medium text-gray-600">Hoje</p>
-                        <p class="text-2xl font-bold text-purple-600">{{ voluntarios|length }}</p>
+                        <p class="text-sm font-medium text-gray-600">Últimos 7 dias</p>
+                        <p class="text-2xl font-bold text-purple-600">{{ cadastros_recentes }}</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Filtros e Ações -->
-        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                <h2 class="text-2xl font-bold primary-color flex items-center">
-                    <span class="mr-3"></span>
-                    Lista de Voluntários
-                </h2>
-                
-                <!-- Filter Form -->
-                <form method="GET" class="flex flex-col sm:flex-row gap-4 items-center no-print">
-                    <div class="flex items-center space-x-2">
-                        <label class="text-sm font-medium text-gray-700">Agência:</label>
-                        <select name="agencia" class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500">
-                            <option value="">Todas</option>
-                            {% for codigo, nome in agencias %}
-                                <option value="{{ codigo }}" {% if codigo == agencia_filtro %}selected{% endif %}>
-                                    {{ nome }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="flex items-center space-x-2">
-                        <label class="text-sm font-medium text-gray-700">Status:</label>
-                        <select name="status" class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500">
-                            <option value="">Todos</option>
-                            {% for codigo, nome in status_choices %}
-                                <option value="{{ codigo }}" {% if codigo == status_filtro %}selected{% endif %}>
-                                    {{ nome }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="flex space-x-2">
-                        <button type="submit" class="accent-gradient text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
-                            Filtrar
-                        </button>
-                        <a href="{% url 'vmm:lista_voluntarios' %}" class="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors">
-                            Limpar
-                        </a>
-                        <button type="button" onclick="window.print()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors">
-                            Imprimir
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Tabela de voluntários -->
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div class="table-container overflow-x-auto custom-scrollbar" style="max-height: 70vh;">
-                <table class="min-w-full divide-y divide-gray-200 responsive-table">
-                    <thead class="primary-bg text-white sticky top-0 z-10">
-                        <tr>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
-                                Voluntário
-                            </th>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
-                                Contato
-                            </th>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
-                                Agência/Setor
-                            </th>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
-                                Camiseta
-                            </th>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
-                                Cargo
-                            </th>
-                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
-                                Status
-                            </th>
-                            <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider no-print">
-                                Ações
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for voluntario in voluntarios %}
-                            <tr class="hover:bg-gray-50 transition-colors" id="row-{{ voluntario.id }}">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="editable-content" id="nome-{{ voluntario.id }}">
-                                        <div class="text-sm font-bold text-gray-900">
-                                            {{ voluntario.nome_completo }}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            CPF: {{ voluntario.cpf }}
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td class="px-6 py-4">
-                                    <div class="editable-content" id="contato-{{ voluntario.id }}">
-                                        <div class="text-sm text-gray-900">
-                                            {{ voluntario.email_corporativo }}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            {{ voluntario.telefone }}
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td class="px-6 py-4">
-                                    <div class="editable-content" id="agencia-{{ voluntario.id }}">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            {{ voluntario.get_agencia_display }}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            {{ voluntario.setor }}
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="editable-content" id="camiseta-{{ voluntario.id }}">
-                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                            {{ voluntario.get_tamanho_camiseta_display }}
-                                        </span>
-                                    </div>
-                                </td>
-                                
-                                <td class="px-6 py-4">
-                                    <div class="editable-content" id="cargo-{{ voluntario.id }}">
-                                        <div class="text-sm text-gray-900">
-                                            {% if voluntario.cargo %}
-                                                {{ voluntario.cargo }}
-                                            {% else %}
-                                                <span class="text-gray-400 italic">A definir</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </td>
-                                
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="editable-content" id="status-{{ voluntario.id }}">
-                                        {% if voluntario.status == 'ativo' %}
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                                ✅ {{ voluntario.get_status_display }}
-                                            </span>
-                                        {% else %}
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                                                ❌ {{ voluntario.get_status_display }}
-                                            </span>
-                                        {% endif %}
-                                    </div>
-                                </td>
-
-                                <!-- Coluna de Ações -->
-                                <td class="px-6 py-4 text-center no-print">
-                                    <div class="flex justify-center space-x-2">
-                                        <button onclick="toggleDetalhes({{ voluntario.id }})" 
-                                                class="inline-flex items-center justify-center text-xs text-teal-600 hover:text-teal-800 font-semibold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors w-20 h-8">
-                                            <span id="btn-text-{{ voluntario.id }}">Detalhes</span>
-                                        </button>
-
-                                        <a href="{% url 'vmm:editar_voluntario' voluntario.id %}" 
-                                        class="inline-flex items-center justify-center text-xs text-blue-600 hover:text-blue-800 font-semibold bg-blue-100 hover:bg-blue-200 px-3 py-2 rounded-lg transition-colors w-16 h-8">
-                                            Editar
-                                        </a>
-                                        
-                                        <form method="POST" action="{% url 'vmm:excluir_voluntario' voluntario.id %}" 
-                                            style="display: inline;" 
-                                            onsubmit="return confirm('Tem certeza que deseja excluir o voluntário {{ voluntario.nome_completo|escapejs }}? Esta ação não pode ser desfeita.')">
-                                            {% csrf_token %}
-                                            <button type="submit" 
-                                                    class="inline-flex items-center justify-center text-xs text-red-600 hover:text-red-800 font-semibold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors w-16 h-8">
-                                                Excluir
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-
-                            <!-- Linha de detalhes expandida -->
-                            <tr class="hidden bg-gray-50" id="detalhes-{{ voluntario.id }}">
-                                <td colspan="8" class="px-6 py-4">
-                                    <div class="bg-white rounded-lg p-4 border border-gray-200">
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div>
-                                                <div class="text-xs font-semibold text-gray-500 uppercase">Data Cadastro</div>
-                                                <div>{{ voluntario.data_cadastro|date:"d/m/Y H:i" }}</div>
-                                            </div>
-                                            <div>
-                                                <div class="text-xs font-semibold text-gray-500 uppercase">Data Atualização</div>
-                                                <div class="text-sm text-gray-900">{{ voluntario.data_atualizacao|date:"d/m/Y H:i" }}</div>
-                                            </div>
-                                            <div>
-                                                <div class="text-xs font-semibold text-gray-500 uppercase">Ativo</div>
-                                                <div class="text-sm text-gray-900">
-                                                    {% if voluntario.ativo %}
-                                                        <span class="text-green-600">Sim</span>
-                                                    {% else %}
-                                                        <span class="text-red-600">Não</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="text-xs font-semibold text-gray-500 uppercase">ID Sistema</div>
-                                                <div class="text-sm text-gray-900">#{{ voluntario.id }}</div>
-                                            </div>
-                                            {% if voluntario.experiencia_anterior %}
-                                            <div class="md:col-span-3">
-                                                <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Experiência/Disponibilidade</div>
-                                                <div class="text-sm text-gray-700 bg-gray-100 p-3 rounded-lg border-l-4 border-teal-400">
-                                                    {{ voluntario.experiencia_anterior }}
-                                                </div>
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="8" class="px-6 py-12 text-center">
-                                    <div class="text-gray-500">
-                                        <span class="text-4xl mb-4 block">👥</span>
-                                        <p class="text-lg font-medium">Nenhum voluntário encontrado</p>
-                                        <p class="text-sm">Tente ajustar os filtros ou aguarde novas inscrições</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
         <!-- Resumo -->
         {% if voluntarios %}
-            <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+            <div class="mt-8 bg-white rounded-xl shadow-lg p-6 mb-8">
                 <h3 class="text-lg font-bold primary-color mb-4">Voluntários por Agência</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {% for agencia in agencias_stats %}
@@ -381,6 +152,341 @@
                     {% endfor %}
                 </div>
             </div>
+        {% endif %}
+
+        <!-- Filtros e Ações -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                <h2 class="text-2xl font-bold primary-color flex items-center">
+                    <span class="mr-3">📋</span>
+                    Lista de Voluntários
+                    {% if has_filters %}
+                        <span class="text-sm font-normal text-gray-500 ml-2">
+                            ({{ total_voluntarios }} resultado{{ total_voluntarios|pluralize }})
+                        </span>
+                    {% endif %}
+                </h2>
+                
+                <!-- Filter Form -->
+                <form method="GET" class="flex flex-col lg:flex-row gap-4 items-start lg:items-end no-print">
+                    <!-- Busca por Nome -->
+                    <div class="flex flex-col">
+                        <label class="text-sm font-medium text-gray-700 mb-1">Buscar:</label>
+                        <input type="text" 
+                            name="busca" 
+                            value="{{ busca }}"
+                            placeholder="Nome, email ou CPF..."
+                            class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 w-48">
+                    </div>
+                    
+                    <!-- Multi-select Agências -->
+                    <div class="flex flex-col">
+                        <label class="text-sm font-medium text-gray-700 mb-1">Agências:</label>
+                        <div class="relative">
+                            <select name="agencia" 
+                                    multiple 
+                                    size="1"
+                                    class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 w-48"
+                                    onchange="updateMultiSelect(this)"
+                                    onclick="toggleDropdown(event)">
+                                <option value="">Todas as agências</option>
+                                {% for codigo, nome in agencias %}
+                                    <option value="{{ codigo }}" 
+                                            {% if codigo in agencias_filtro %}selected{% endif %}>
+                                        {{ nome }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            
+                            <!-- Dropdown customizado para multi-select -->
+                            <div id="agencias-multi-dropdown" class="absolute z-20 w-full bg-white border-2 border-gray-200 rounded-lg mt-1 max-h-48 overflow-y-auto hidden shadow-lg">
+                                <div class="p-2">
+                                    <label class="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                        <input type="checkbox" 
+                                            value="" 
+                                            class="mr-2 agencia-checkbox"
+                                            onchange="handleAgenciaChange()"
+                                            {% if not agencias_filtro %}checked{% endif %}>
+                                        <span class="text-sm font-medium">Todas as agências</span>
+                                    </label>
+                                    {% for codigo, nome in agencias %}
+                                        <label class="flex items-center p-2 hover:bg-gray-100 rounded cursor-pointer">
+                                            <input type="checkbox" 
+                                                name="agencia" 
+                                                value="{{ codigo }}" 
+                                                class="mr-2 agencia-checkbox"
+                                                onchange="handleAgenciaChange()"
+                                                {% if codigo in agencias_filtro %}checked{% endif %}>
+                                            <span class="text-sm">{{ nome }}</span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Status -->
+                    <div class="flex flex-col">
+                        <label class="text-sm font-medium text-gray-700 mb-1">Status:</label>
+                        <select name="status" class="border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500 w-32">
+                            <option value="">Todos</option>
+                            {% for codigo, nome in status_choices %}
+                                <option value="{{ codigo }}" {% if codigo == status_filtro %}selected{% endif %}>
+                                    {{ nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Botões -->
+                    <div class="flex space-x-2">
+                        <button type="submit" class="accent-gradient text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap">
+                            Filtrar
+                        </button>
+                        <a href="{% url 'vmm:lista_voluntarios' %}" class="bg-gray-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-600 transition-colors whitespace-nowrap">
+                            Limpar
+                        </a>
+                        <button type="button" onclick="window.print()" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap">
+                            Imprimir
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabela de voluntários -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="table-container overflow-x-auto custom-scrollbar" style="max-height: 70vh;">
+                <table class="min-w-full divide-y divide-gray-200 responsive-table">
+                    <thead class="primary-bg text-white sticky top-0 z-10">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Voluntário
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Contato
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Agência/Setor
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider no-print">
+                                Ações
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for voluntario in voluntarios %}
+                            <tr class="hover:bg-gray-50 transition-colors" id="row-{{ voluntario.id }}">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div>
+                                        <div class="text-sm font-bold text-gray-900">
+                                            {{ voluntario.nome_completo }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            CPF: {{ voluntario.cpf }}
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4">
+                                    <div>
+                                        <div class="text-sm text-gray-900">
+                                            {{ voluntario.email_corporativo }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ voluntario.telefone }}
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ voluntario.get_agencia_display }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ voluntario.setor }}
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if voluntario.status == 'ativo' %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                            ✅ {{ voluntario.get_status_display }}
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                                            ❌ {{ voluntario.get_status_display }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Coluna de Ações -->
+                                <td class="px-6 py-4 text-center no-print">
+                                    <div class="flex justify-center space-x-2">
+                                        <a href="{% url 'vmm:editar_voluntario' voluntario.id %}" 
+                                        class="inline-flex items-center justify-center text-xs text-blue-600 hover:text-blue-800 font-semibold bg-blue-100 hover:bg-blue-200 px-3 py-2 rounded-lg transition-colors w-16 h-8">
+                                            Editar
+                                        </a>
+                                        
+                                        <form method="POST" action="{% url 'vmm:excluir_voluntario' voluntario.id %}" 
+                                            style="display: inline;" 
+                                            onsubmit="return confirm('Tem certeza que deseja excluir o voluntário {{ voluntario.nome_completo|escapejs }}? Esta ação não pode ser desfeita.')">
+                                            {% csrf_token %}
+                                            <button type="submit" 
+                                                    class="inline-flex items-center justify-center text-xs text-red-600 hover:text-red-800 font-semibold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors w-16 h-8">
+                                                Excluir
+                                            </button>
+                                        </form>
+                                        
+                                        <button onclick="toggleDetalhes({{ voluntario.id }})" 
+                                                class="inline-flex items-center justify-center text-xs text-teal-600 hover:text-teal-800 font-semibold bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors w-20 h-8">
+                                            <span id="btn-text-{{ voluntario.id }}">Detalhes</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Linha de detalhes expandida -->
+                            <tr class="hidden bg-gray-50" id="detalhes-{{ voluntario.id }}">
+                                <td colspan="5" class="px-6 py-4">
+                                    <div class="bg-white rounded-lg p-4 border border-gray-200">
+                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <!-- Camiseta -->
+                                            <div>
+                                                <div class="text-xs font-semibold text-gray-500 uppercase mb-1">Camiseta</div>
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                                    {{ voluntario.get_tamanho_camiseta_display }}
+                                                </span>
+                                            </div>
+                                            
+                                            <!-- Cargo -->
+                                            <div>
+                                                <div class="text-xs font-semibold text-gray-500 uppercase mb-1">Cargo no Evento</div>
+                                                <div class="text-sm text-gray-900">
+                                                    {% if voluntario.cargo %}
+                                                        {{ voluntario.cargo }}
+                                                    {% else %}
+                                                        <span class="text-gray-400 italic">A definir</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Data Cadastro -->
+                                            <div>
+                                                <div class="text-xs font-semibold text-gray-500 uppercase mb-1">Data Cadastro</div>
+                                                <div class="text-sm text-gray-900">{{ voluntario.data_cadastro|date:"d/m/Y H:i" }}</div>
+                                            </div>
+                                            
+                                            <!-- Data Atualização -->
+                                            <div>
+                                                <div class="text-xs font-semibold text-gray-500 uppercase mb-1">Última Atualização</div>
+                                                <div class="text-sm text-gray-900">{{ voluntario.data_atualizacao|date:"d/m/Y H:i" }}</div>
+                                            </div>
+                                            
+                                            <!-- ID Sistema -->
+                                            <div>
+                                                <div class="text-xs font-semibold text-gray-500 uppercase mb-1">ID Sistema</div>
+                                                <div class="text-sm text-gray-900">#{{ voluntario.id }}</div>
+                                            </div>
+                                            
+                                            <!-- Status Ativo -->
+                                            <div>
+                                                <div class="text-xs font-semibold text-gray-500 uppercase mb-1">Ativo no Sistema</div>
+                                                <div class="text-sm text-gray-900">
+                                                    {% if voluntario.ativo %}
+                                                        <span class="text-green-600 font-medium">Sim</span>
+                                                    {% else %}
+                                                        <span class="text-red-600 font-medium">Não</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Experiência (span completo se existir) -->
+                                            {% if voluntario.experiencia_anterior %}
+                                            <div class="md:col-span-4">
+                                                <div class="text-xs font-semibold text-gray-500 uppercase mb-2">Experiência/Disponibilidade</div>
+                                                <div class="text-sm text-gray-700 bg-gray-100 p-3 rounded-lg border-l-4 border-teal-400">
+                                                    {{ voluntario.experiencia_anterior }}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-12 text-center">
+                                    <div class="text-gray-500">
+                                        <span class="text-4xl mb-4 block">👥</span>
+                                        <p class="text-lg font-medium">Nenhum voluntário encontrado</p>
+                                        <p class="text-sm">Tente ajustar os filtros ou aguarde novas inscrições</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginação -->
+        {% if voluntarios.has_other_pages %}
+        <div class="bg-white rounded-xl shadow-lg p-6 mt-8">
+            <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+                <!-- Informações da página -->
+                <div class="text-sm text-gray-600">
+                    Mostrando {{ voluntarios.start_index }} a {{ voluntarios.end_index }} 
+                    de {{ voluntarios.paginator.count }} voluntários
+                </div>
+                
+                <!-- Controles de paginação -->
+                <div class="flex items-center space-x-2">
+                    <!-- Primeira página -->
+                    {% if voluntarios.has_previous %}
+                        <a href="?{% if busca %}busca={{ busca }}&{% endif %}{% for ag in agencias_filtro %}agencia={{ ag }}&{% endfor %}{% if status_filtro %}status={{ status_filtro }}&{% endif %}page=1" 
+                        class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                            « Primeira
+                        </a>
+                        <a href="?{% if busca %}busca={{ busca }}&{% endif %}{% for ag in agencias_filtro %}agencia={{ ag }}&{% endfor %}{% if status_filtro %}status={{ status_filtro }}&{% endif %}page={{ voluntarios.previous_page_number }}" 
+                        class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                            ‹ Anterior
+                        </a>
+                    {% endif %}
+                    
+                    <!-- Números das páginas -->
+                    {% for num in voluntarios.paginator.page_range %}
+                        {% if voluntarios.number == num %}
+                            <span class="px-3 py-2 bg-green-500 text-white rounded-lg text-sm font-medium">
+                                {{ num }}
+                            </span>
+                        {% elif num > voluntarios.number|add:'-3' and num < voluntarios.number|add:'3' %}
+                            <a href="?{% if busca %}busca={{ busca }}&{% endif %}{% for ag in agencias_filtro %}agencia={{ ag }}&{% endfor %}{% if status_filtro %}status={{ status_filtro }}&{% endif %}page={{ num }}" 
+                            class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                                {{ num }}
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <!-- Próxima página -->
+                    {% if voluntarios.has_next %}
+                        <a href="?{% if busca %}busca={{ busca }}&{% endif %}{% for ag in agencias_filtro %}agencia={{ ag }}&{% endfor %}{% if status_filtro %}status={{ status_filtro }}&{% endif %}page={{ voluntarios.next_page_number }}" 
+                        class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                            Próxima ›
+                        </a>
+                        <a href="?{% if busca %}busca={{ busca }}&{% endif %}{% for ag in agencias_filtro %}agencia={{ ag }}&{% endfor %}{% if status_filtro %}status={{ status_filtro }}&{% endif %}page={{ voluntarios.paginator.num_pages }}" 
+                        class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm">
+                            Última »
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
         {% endif %}
     </main>
 

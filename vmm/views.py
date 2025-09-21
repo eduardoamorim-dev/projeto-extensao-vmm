@@ -6,6 +6,11 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
 from django.db.models import Count
 from .models import Voluntario
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.utils import timezone
+from datetime import timedelta
+
 import re
 
 
@@ -156,7 +161,6 @@ def cadastro_voluntario(request):
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
     })
 
-
 def lista_voluntarios(request):
     """
     View para listar todos os voluntários (apenas para staff)
@@ -165,17 +169,33 @@ def lista_voluntarios(request):
     todos_voluntarios = Voluntario.objects.all()
     voluntarios = todos_voluntarios.order_by('-data_cadastro')
     
-    # Filtros opcionais - aplicar apenas na listagem, não no resumo
-    agencia_filtro = request.GET.get('agencia')
+    # Filtros
+    agencias_filtro = request.GET.getlist('agencia')  # Para multi-select
     status_filtro = request.GET.get('status')
+    busca = request.GET.get('busca', '').strip()
     
-    if agencia_filtro:
-        voluntarios = voluntarios.filter(agencia=agencia_filtro)
+    # Aplicar filtro de busca por nome
+    if busca:
+        voluntarios = voluntarios.filter(
+            Q(nome_completo__icontains=busca) |
+            Q(email_corporativo__icontains=busca) |
+            Q(cpf__icontains=busca)
+        )
     
+    # Aplicar filtro de agências (multi-select)
+    if agencias_filtro:
+        voluntarios = voluntarios.filter(agencia__in=agencias_filtro)
+    
+    # Aplicar filtro de status
     if status_filtro:
         voluntarios = voluntarios.filter(status=status_filtro)
     
-    # Estatísticas agregadas para evitar duplicação
+    # Paginação
+    paginator = Paginator(voluntarios, 10)  # 10 voluntários por página
+    page_number = request.GET.get('page')
+    voluntarios_page = paginator.get_page(page_number)
+    
+    # Estatísticas agregadas (sempre com todos os dados)
     voluntarios_por_agencia = (
         todos_voluntarios.values('agencia')
         .annotate(total=Count('id'))
@@ -217,18 +237,26 @@ def lista_voluntarios(request):
         })
     
     context = {
-        'voluntarios': voluntarios,
+        'voluntarios': voluntarios_page,  # Dados paginados
         'agencias': Voluntario.AGENCIAS_CHOICES,
         'status_choices': Voluntario.STATUS_CHOICES,
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
-        'agencia_filtro': agencia_filtro,
+        'agencias_filtro': agencias_filtro,
         'status_filtro': status_filtro,
+        'busca': busca,
         'agencias_stats': agencias_stats,
         'camisetas_stats': camisetas_stats,
+        # Informações da paginação e estatísticas
+        'total_voluntarios': todos_voluntarios.count(),
+        'cadastros_recentes': todos_voluntarios.filter(
+            data_cadastro__gte=timezone.now() - timedelta(days=7)
+        ).count(),
+        'total_ativos': todos_voluntarios.filter(status='ativo').count(),
+        'total_agencias': len(Voluntario.AGENCIAS_CHOICES),
+        'has_filters': bool(agencias_filtro or status_filtro or busca),
     }
 
     return render(request, 'admin_voluntarios_lista.html', context)
-
 
 @csrf_protect
 def editar_voluntario(request, voluntario_id):
