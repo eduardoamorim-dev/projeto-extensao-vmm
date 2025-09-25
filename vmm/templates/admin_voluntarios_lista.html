@@ -124,7 +124,7 @@
         <!-- Resumo -->
         {% if voluntarios %}
             <div class="mt-8 bg-white rounded-xl shadow-lg p-6 mb-8">
-                <h3 class="text-lg font-bold primary-color mb-4">Voluntários por Agência</h3>
+                <h3 class="text-lg font-bold primary-color mb-4"><i class="fa-solid fa-user-group mr-2"></i>Voluntários por Agência</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {% for agencia in agencias_stats %}
                         <div class="bg-gray-50 rounded-lg p-4 text-center">
@@ -138,7 +138,7 @@
                     {% endfor %}
                 </div>
                 
-                <h3 class="text-lg font-bold primary-color mb-4 mt-6">Camisetas</h3>
+                <h3 class="text-lg font-bold primary-color mb-4 mt-6"><i class="fa-solid fa-shirt mr-2"></i>Camisetas</h3>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     {% for camiseta in camisetas_stats %}
                         <div class="bg-blue-50 rounded-lg p-3 text-center">
@@ -158,8 +158,7 @@
         <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
                 <h2 class="text-2xl font-bold primary-color flex items-center">
-                    <span class="mr-3">📋</span>
-                    Lista de Voluntários
+                    <i class="fa-solid fa-list mr-2"></i> Lista de Voluntários
                     {% if has_filters %}
                         <span class="text-sm font-normal text-gray-500 ml-2">
                             ({{ total_voluntarios }} resultado{{ total_voluntarios|pluralize }})
@@ -345,10 +344,10 @@
                                         </a>
                                         
                                         <form method="POST" action="{% url 'vmm:excluir_voluntario' voluntario.id %}" 
-                                            style="display: inline;" 
-                                            onsubmit="return confirm('Tem certeza que deseja excluir o voluntário {{ voluntario.nome_completo|escapejs }}? Esta ação não pode ser desfeita.')">
+                                            style="display: inline;">
                                             {% csrf_token %}
-                                            <button type="submit" 
+                                            <button type="button"
+                                                    onclick="abrirModalDelete('{{ voluntario.id }}', '{{ voluntario.nome_completo|escapejs }}', '{{ voluntario.email_corporativo|escapejs }}')"
                                                     class="inline-flex items-center justify-center text-xs text-red-600 hover:text-red-800 font-semibold bg-red-100 hover:bg-red-200 px-3 py-2 rounded-lg transition-colors w-25 h-8">
                                                 <i class="fa-solid fa-trash mr-2"></i> Excluir
                                             </button>
@@ -494,6 +493,132 @@
         </div>
         {% endif %}
     </main>
+
+
+<!-- Modal de Confirmação de Exclusão -->
+<div id="modal-delete" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300 scale-95" id="modal-content">
+        <!-- Cabeçalho do Modal -->
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                    <i class="fa-solid fa-triangle-exclamation text-red-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">Confirmar Exclusão</h3>
+                    <p class="text-sm text-gray-500 mt-1">Esta ação não pode ser desfeita</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Corpo do Modal -->
+        <div class="p-6">
+            <p class="text-gray-700 mb-2">
+                Tem certeza de que deseja excluir o voluntário:
+            </p>
+            <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                <p class="font-semibold text-gray-900" id="volunteer-name"></p>
+                <p class="text-sm text-gray-600" id="volunteer-email"></p>
+            </div>
+            <p class="text-red-600 text-sm font-medium">
+                ⚠️ Todos os dados deste voluntário serão permanentemente removidos do sistema.
+            </p>
+        </div>
+        
+        <!-- Rodapé do Modal -->
+        <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+            <button type="button" 
+                    onclick="fecharModalDelete()" 
+                    class="px-6 py-3 bg-gray-200 text-gray-800 rounded-xl font-semibold hover:bg-gray-300 transition-colors">
+                <i class="fa-solid fa-times mr-2"></i>Cancelar
+            </button>
+            <button type="button" 
+                    onclick="confirmarExclusao()" 
+                    class="px-6 py-3 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors">
+                <i class="fa-solid fa-trash mr-2"></i>Excluir Voluntário
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript para o Modal -->
+<script>
+// JavaScript para o Modal
+let voluntarioParaExcluir = {
+    id: null,
+    nome: '',
+    email: ''
+};
+
+function abrirModalDelete(id, nome, email) {
+    voluntarioParaExcluir = { id, nome, email };
+    
+    // Atualizar informações no modal
+    document.getElementById('volunteer-name').textContent = nome;
+    document.getElementById('volunteer-email').textContent = email;
+    
+    const modal = document.getElementById('modal-delete');
+    const modalContent = document.getElementById('modal-content');
+    
+    modal.classList.remove('hidden');
+    
+    // Animação de entrada
+    setTimeout(() => {
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+}
+
+function fecharModalDelete() {
+    const modal = document.getElementById('modal-delete');
+    const modalContent = document.getElementById('modal-content');
+    
+    // Animação de saída
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 200);
+}
+
+function confirmarExclusao() {
+    if (voluntarioParaExcluir.id) {
+        // Criar formulário dinamicamente para fazer POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/excluir/${voluntarioParaExcluir.id}/`;
+        
+        // Adicionar CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        form.appendChild(csrfInput);
+        
+        // Adicionar ao body e submeter
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Fechar modal ao clicar no fundo
+document.getElementById('modal-delete').addEventListener('click', function(e) {
+    if (e.target === this) {
+        fecharModalDelete();
+    }
+});
+
+// Fechar modal com ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('modal-delete');
+        if (!modal.classList.contains('hidden')) {
+            fecharModalDelete();
+        }
+    }
+});
+</script>
 
 <script>
     // Função para ver detalhes
