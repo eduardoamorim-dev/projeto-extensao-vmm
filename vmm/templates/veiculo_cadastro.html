@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+
+{% block title %}Cadastrar Veículo | Veja Um Mundo Melhor{% endblock %}
+
+{% block content %}
+{% include 'partials/sidebar_admin.html' %}
+
+<!-- Conteúdo Principal -->
+<div class="lg:ml-64 min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold primary-color flex items-center">
+                        <i class="fa-solid fa-plus-circle mr-3"></i>
+                        Cadastrar Novo Veículo
+                    </h1>
+                    <p class="text-gray-600 mt-1">Adicione um novo veículo à frota</p>
+                </div>
+                <div class="mt-4 lg:mt-0">
+                    <a href="{% url 'vmm:lista_veiculos' %}" 
+                        class="bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors">
+                        <i class="fa-solid fa-arrow-left mr-2"></i>
+                        Voltar para Lista
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Messages Section -->
+        {% if messages %}
+            <div class="mb-8">
+                {% for message in messages %}
+                    <div class="mb-4 p-4 rounded-xl {% if message.tags == 'success' %}bg-green-100 border-l-4 border-green-500 text-green-700{% elif message.tags == 'error' %}bg-red-100 border-l-4 border-red-500 text-red-700{% else %}bg-blue-100 border-l-4 border-blue-500 text-blue-700{% endif %}">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                {% if message.tags == 'success' %}
+                                    <i class="fa-solid fa-circle-check text-xl"></i>
+                                {% elif message.tags == 'error' %}
+                                    <i class="fa-solid fa-circle-xmark text-xl"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-info-circle text-xl"></i>
+                                {% endif %}
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">{{ message }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Formulário de Cadastro -->
+        <div class="bg-white rounded-3xl shadow-xl p-8">
+            <div class="mb-8">
+                <div class="flex items-center">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+                        <i class="fa-solid fa-car text-purple-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Informações do Veículo</h2>
+                        <p class="text-sm text-gray-600">Preencha os dados do novo veículo</p>
+                    </div>
+                </div>
+            </div>
+
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Nome e Placa -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Nome/Identificação <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" 
+                               name="nome" 
+                               required
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+                               placeholder="Ex: Corolla Prata 01"
+                               value="{{ form_data.nome|default:'' }}">
+                        <small class="text-gray-500 text-sm">Nome para identificação do veículo</small>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Placa <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" 
+                               name="placa" 
+                               required
+                               maxlength="8"
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-colors uppercase"
+                               placeholder="ABC-1234"
+                               value="{{ form_data.placa|default:'' }}"
+                               onkeyup="this.value = this.value.toUpperCase()">
+                        <small class="text-gray-500 text-sm">Placa do veículo (formato antigo ou Mercosul)</small>
+                    </div>
+                </div>
+
+                <!-- Tipo e Capacidade -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Tipo do Veículo <span class="text-red-500">*</span>
+                        </label>
+                        <select name="tipo" 
+                                required
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-colors">
+                            <option value="">Selecione o tipo</option>
+                            {% for codigo, nome in tipo_choices %}
+                                <option value="{{ codigo }}" {% if form_data.tipo == codigo %}selected{% endif %}>
+                                    {{ nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Capacidade <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="number" 
+                                   name="capacidade" 
+                                   required
+                                   min="1"
+                                   max="50"
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-colors"
+                                   placeholder="5"
+                                   value="{{ form_data.capacidade|default:'5' }}">
+                            <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500">
+                                    <i class="fa-solid fa-users"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <small class="text-gray-500 text-sm">Número de passageiros (incluindo motorista)</small>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Status Inicial <span class="text-red-500">*</span>
+                        </label>
+                        <select name="status" 
+                                required
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-colors">
+                            {% for codigo, nome in status_choices %}
+                                <option value="{{ codigo }}" {% if form_data.status == codigo or codigo == 'disponivel' and not form_data.status %}selected{% endif %}>
+                                    {{ nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-gray-500 text-sm">Status do veículo após o cadastro</small>
+                    </div>
+                </div>
+
+                <!-- Observações -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        Observações
+                    </label>
+                    <textarea name="observacoes" 
+                              rows="4"
+                              class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-colors resize-none"
+                              placeholder="Informações adicionais sobre o veículo (opcional)">{{ form_data.observacoes|default:'' }}</textarea>
+                    <small class="text-gray-500 text-sm">Campo opcional para anotações importantes</small>
+                </div>
+
+                <!-- Informações Importantes -->
+                <div class="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fa-solid fa-info-circle text-blue-600 text-xl"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h4 class="text-sm font-bold text-blue-900 mb-2">Informações Importantes:</h4>
+                            <ul class="text-sm text-blue-800 space-y-1">
+                                <li><i class="fa-solid fa-check mr-2"></i>A placa deve ser única no sistema</li>
+                                <li><i class="fa-solid fa-check mr-2"></i>A capacidade inclui o motorista</li>
+                                <li><i class="fa-solid fa-check mr-2"></i>Veículos disponíveis podem ser alocados para eventos</li>
+                                <li><i class="fa-solid fa-check mr-2"></i>Veículos em manutenção ficam indisponíveis automaticamente</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botões de Ação -->
+                <div class="flex justify-between pt-6 border-t border-gray-200">
+                    <a href="{% url 'vmm:lista_veiculos' %}" 
+                       class="px-8 py-3 bg-gray-500 text-white rounded-xl font-bold hover:bg-gray-600 transition-colors">
+                        <i class="fa-solid fa-times mr-2"></i>
+                        Cancelar
+                    </a>
+                    
+                    <button type="submit" 
+                            class="px-8 py-3 accent-gradient text-white rounded-xl font-bold hover:opacity-90 transition-opacity">
+                        <i class="fa-solid fa-save mr-2"></i>
+                        Cadastrar Veículo
+                    </button>
+                </div>
+
+                <!-- Required Fields Note -->
+                <div class="text-center pt-4">
+                    <small class="text-gray-500"><span class="text-red-500">*</span> Campos obrigatórios</small>
+                </div>
+            </form>
+        </div>
+
+        <!-- Card de Ajuda -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mt-8">
+            <h3 class="text-lg font-bold text-gray-700 mb-4 flex items-center">
+                <i class="fa-solid fa-question-circle mr-2"></i>
+                Precisa de Ajuda?
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-purple-50 rounded-lg p-4">
+                    <h4 class="font-bold text-purple-900 mb-2">Tipos de Veículos</h4>
+                    <ul class="text-sm text-purple-800 space-y-1">
+                        <li><strong>Sedan:</strong> Carro passeio comum</li>
+                        <li><strong>SUV:</strong> Utilitário esportivo</li>
+                        <li><strong>Van:</strong> Transporte para grupos</li>
+                        <li><strong>Picape:</strong> Caminhonete</li>
+                    </ul>
+                </div>
+                <div class="bg-green-50 rounded-lg p-4">
+                    <h4 class="font-bold text-green-900 mb-2">Status Disponíveis</h4>
+                    <ul class="text-sm text-green-800 space-y-1">
+                        <li><strong>Disponível:</strong> Pode ser alocado</li>
+                        <li><strong>Em Manutenção:</strong> Indisponível</li>
+                        <li><strong>Indisponível:</strong> Não pode ser usado</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+{% block extra_js %}
+<script>
+// Validação do formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+    const capacidade = parseInt(document.querySelector('input[name="capacidade"]').value);
+    
+    if (capacidade < 1 || capacidade > 50) {
+        e.preventDefault();
+        alert('A capacidade deve estar entre 1 e 50 pessoas.');
+        return false;
+    }
+});
+
+// Auto-formatação da placa
+const placaInput = document.querySelector('input[name="placa"]');
+placaInput.addEventListener('blur', function() {
+    let placa = this.value.replace(/[^A-Z0-9]/g, '');
+    
+    // Formato antigo: ABC-1234
+    if (placa.length === 7 && /^[A-Z]{3}[0-9]{4}$/.test(placa)) {
+        this.value = placa.substring(0, 3) + '-' + placa.substring(3);
+    }
+    // Formato Mercosul: ABC-1D23
+    else if (placa.length === 7 && /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(placa)) {
+        this.value = placa.substring(0, 3) + '-' + placa.substring(3);
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,361 @@
+{% extends 'base.html' %}
+
+{% block title %}Lista de Veículos | Veja Um Mundo Melhor{% endblock %}
+
+{% block content %}
+{% include 'partials/sidebar_admin.html' %}
+
+<!-- Conteúdo Principal -->
+<div class="lg:ml-64 min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold primary-color flex items-center">
+                        <i class="fa-solid fa-car mr-3"></i>
+                        Gerenciamento de Veículos
+                    </h1>
+                    <p class="text-gray-600 mt-1">Controle de frota disponível para eventos</p>
+                </div>
+                <div class="mt-4 lg:mt-0">
+                    <a href="{% url 'vmm:cadastro_veiculo' %}" 
+                       class="accent-gradient text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity inline-flex items-center">
+                        <i class="fa-solid fa-plus-circle mr-2"></i>
+                        Cadastrar Veículo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Cards de Estatísticas -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 uppercase">Total de Veículos</p>
+                        <p class="text-3xl font-bold text-purple-600 mt-2">{{ total_veiculos }}</p>
+                    </div>
+                    <div class="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-car-side text-purple-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 uppercase">Disponíveis</p>
+                        <p class="text-3xl font-bold text-green-600 mt-2">{{ disponiveis }}</p>
+                    </div>
+                    <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-circle-check text-green-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600 uppercase">Em Manutenção</p>
+                        <p class="text-3xl font-bold text-orange-600 mt-2">
+                            {{ total_veiculos|add:"-"|add:disponiveis }}
+                        </p>
+                    </div>
+                    <div class="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center">
+                        <i class="fa-solid fa-wrench text-orange-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <form method="GET" class="flex flex-col lg:flex-row gap-4 items-end">
+                <!-- Busca -->
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Buscar:</label>
+                    <input type="text" 
+                           name="busca" 
+                           value="{{ busca }}"
+                           placeholder="Nome do veículo ou placa..."
+                           class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors">
+                </div>
+                
+                <!-- Status -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Status:</label>
+                    <select name="status" 
+                            class="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors">
+                        <option value="">Todos</option>
+                        {% for codigo, nome in status_choices %}
+                            <option value="{{ codigo }}" {% if status_filtro == codigo %}selected{% endif %}>
+                                {{ nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Tipo -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tipo:</label>
+                    <select name="tipo" 
+                            class="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors">
+                        <option value="">Todos</option>
+                        {% for codigo, nome in tipo_choices %}
+                            <option value="{{ codigo }}" {% if tipo_filtro == codigo %}selected{% endif %}>
+                                {{ nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Botões -->
+                <div class="flex gap-2">
+                    <button type="submit" 
+                            class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors">
+                        <i class="fa-solid fa-filter mr-2"></i>
+                        Filtrar
+                    </button>
+                    <a href="{% url 'vmm:lista_veiculos' %}" 
+                       class="px-4 py-2 bg-gray-500 text-white rounded-lg font-medium hover:bg-gray-600 transition-colors">
+                        <i class="fa-solid fa-delete-left mr-2"></i>
+                        Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lista de Veículos -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Veículo
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Tipo
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Capacidade
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">
+                                Ações
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for veiculo in veiculos %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4">
+                                    <div>
+                                        <div class="text-sm font-bold text-gray-900">
+                                            {{ veiculo.nome }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            <i class="fa-solid fa-id-card mr-1"></i>
+                                            {{ veiculo.placa }}
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        {% if veiculo.tipo == 'sedan' %}
+                                            <i class="fa-solid fa-car mr-1"></i>
+                                        {% elif veiculo.tipo == 'suv' %}
+                                            <i class="fa-solid fa-car-side mr-1"></i>
+                                        {% elif veiculo.tipo == 'van' %}
+                                            <i class="fa-solid fa-van-shuttle mr-1"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-truck-pickup mr-1"></i>
+                                        {% endif %}
+                                        {{ veiculo.get_tipo_display }}
+                                    </span>
+                                </td>
+                                
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center">
+                                        <i class="fa-solid fa-users text-gray-400 mr-2"></i>
+                                        <span class="text-sm font-medium text-gray-900">
+                                            {{ veiculo.capacidade }} pessoas
+                                        </span>
+                                    </div>
+                                </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if veiculo.status == 'disponivel' %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <i class="fa-solid fa-circle-check mr-1"></i>
+                                            {{ veiculo.get_status_display }}
+                                        </span>
+                                    {% elif veiculo.status == 'manutencao' %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                            <i class="fa-solid fa-wrench mr-1"></i>
+                                            {{ veiculo.get_status_display }}
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            <i class="fa-solid fa-circle-xmark mr-1"></i>
+                                            {{ veiculo.get_status_display }}
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                
+                                <td class="px-6 py-4 text-center">
+                                    <div class="flex justify-center space-x-2">
+                                        <button onclick="toggleDetalhes({{ veiculo.id }})" 
+                                                class="text-purple-600 hover:text-purple-800 font-medium text-sm">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </button>
+                                        
+                                        <a href="{% url 'vmm:editar_veiculo' veiculo.id %}" 
+                                           class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </a>
+                                        
+                                        <button onclick="confirmarExclusao({{ veiculo.id }}, '{{ veiculo.nome|escapejs }}')"
+                                                class="text-red-600 hover:text-red-800 font-medium text-sm">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- Linha de detalhes expandida -->
+                            <tr class="hidden bg-purple-50" id="detalhes-{{ veiculo.id }}">
+                                <td colspan="5" class="px-6 py-4">
+                                    <div class="bg-white rounded-lg p-4 border border-purple-200">
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Cadastrado em</p>
+                                                <p class="text-sm text-gray-900">{{ veiculo.data_cadastro|date:"d/m/Y H:i" }}</p>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Última Atualização</p>
+                                                <p class="text-sm text-gray-900">{{ veiculo.data_atualizacao|date:"d/m/Y H:i" }}</p>
+                                            </div>
+                                            <div>
+                                                <p class="text-xs font-semibold text-gray-500 uppercase mb-1">ID Sistema</p>
+                                                <p class="text-sm text-gray-900">#{{ veiculo.id }}</p>
+                                            </div>
+                                            {% if veiculo.observacoes %}
+                                            <div class="md:col-span-3">
+                                                <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Observações</p>
+                                                <p class="text-sm text-gray-700 bg-gray-100 p-3 rounded-lg">
+                                                    {{ veiculo.observacoes }}
+                                                </p>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="px-6 py-12 text-center">
+                                    <div class="text-gray-500">
+                                        <i class="fa-solid fa-car-side text-4xl mb-4 block"></i>
+                                        <p class="text-lg font-medium">Nenhum veículo encontrado</p>
+                                        <p class="text-sm">Cadastre o primeiro veículo da frota</p>
+                                        <a href="{% url 'vmm:cadastro_veiculo' %}" 
+                                           class="inline-block mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                                            Cadastrar Veículo
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Paginação -->
+        {% if veiculos.has_other_pages %}
+        <div class="bg-white rounded-xl shadow-lg p-6 mt-8">
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    Mostrando {{ veiculos.start_index }} a {{ veiculos.end_index }} 
+                    de {{ veiculos.paginator.count }} veículos
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    {% if veiculos.has_previous %}
+                        <a href="?page={{ veiculos.previous_page_number }}{% if busca %}&busca={{ busca }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}" 
+                           class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </a>
+                    {% endif %}
+                    
+                    <span class="px-3 py-2 bg-purple-600 text-white rounded-lg font-medium">
+                        {{ veiculos.number }}
+                    </span>
+                    
+                    {% if veiculos.has_next %}
+                        <a href="?page={{ veiculos.next_page_number }}{% if busca %}&busca={{ busca }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}{% if tipo_filtro %}&tipo={{ tipo_filtro }}{% endif %}" 
+                           class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div id="modal-delete" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Confirmar Exclusão</h3>
+            <p class="text-gray-700 mb-4">
+                Tem certeza de que deseja excluir o veículo <span id="veiculo-nome" class="font-bold"></span>?
+            </p>
+            <p class="text-red-600 text-sm">Esta ação não pode ser desfeita.</p>
+        </div>
+        <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+            <button onclick="fecharModal()" 
+                    class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">
+                Cancelar
+            </button>
+            <form id="form-delete" method="POST" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" 
+                        class="px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">
+                    Excluir
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+function toggleDetalhes(id) {
+    const detalhes = document.getElementById('detalhes-' + id);
+    detalhes.classList.toggle('hidden');
+}
+
+function confirmarExclusao(id, nome) {
+    document.getElementById('veiculo-nome').textContent = nome;
+    document.getElementById('form-delete').action = `/veiculos/excluir/${id}/`;
+    document.getElementById('modal-delete').classList.remove('hidden');
+}
+
+function fecharModal() {
+    document.getElementById('modal-delete').classList.add('hidden');
+}
+</script>
+{% endblock %}
+{% endblock %}
