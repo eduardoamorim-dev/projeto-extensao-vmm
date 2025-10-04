@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Administrativo | Veja Um Mundo Melhor{% endblock %}
+
+{% block content %}
+    {% include 'partials/sidebar_admin.html' %}
+    
+    <!-- Conteúdo Principal -->
+    <div class="lg:ml-64 min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b border-gray-200">
+            <div class="px-4 sm:px-6 lg:px-8 py-6">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold primary-color">Dashboard Administrativo</h1>
+                        <p class="text-gray-600 mt-1">Visão geral do sistema Veja Um Mundo Melhor</p>
+                    </div>
+                    <div class="mt-4 lg:mt-0">
+                        <div class="flex items-center space-x-2 text-sm text-gray-600">
+                            <i class="fa-solid fa-calendar-day"></i>
+                            <span>{{ "now"|date:"d/m/Y" }} - {{ "now"|date:"H:i" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Alertas -->
+            {% if alertas %}
+            <div class="mb-8 space-y-4">
+                {% for alerta in alertas %}
+                <div class="rounded-xl p-4 border-l-4 
+                    {% if alerta.tipo == 'warning' %}bg-yellow-50 border-yellow-500 text-yellow-800
+                    {% elif alerta.tipo == 'error' %}bg-red-50 border-red-500 text-red-800
+                    {% else %}bg-blue-50 border-blue-500 text-blue-800{% endif %}">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            {% if alerta.tipo == 'warning' %}
+                                <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                            {% elif alerta.tipo == 'error' %}
+                                <i class="fa-solid fa-circle-exclamation text-xl"></i>
+                            {% else %}
+                                <i class="fa-solid fa-info-circle text-xl"></i>
+                            {% endif %}
+                        </div>
+                        <div class="ml-3">
+                            <p class="font-medium">{{ alerta.mensagem }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Cards de Estatísticas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <!-- Total Voluntários -->
+                <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500 hover:shadow-xl transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 uppercase">Total Voluntários</p>
+                            <p class="text-3xl font-bold primary-color mt-2">{{ total_voluntarios }}</p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                <span class="text-green-600 font-semibold">{{ voluntarios_ativos }}</span> ativos
+                            </p>
+                        </div>
+                        <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fa-solid fa-users text-green-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Eventos -->
+                <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500 hover:shadow-xl transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 uppercase">Total Eventos</p>
+                            <p class="text-3xl font-bold text-blue-600 mt-2">{{ total_eventos }}</p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                <span class="text-blue-600 font-semibold">{{ eventos_mes }}</span> este mês
+                            </p>
+                        </div>
+                        <div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fa-solid fa-calendar-days text-blue-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Veículos Disponíveis -->
+                <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500 hover:shadow-xl transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 uppercase">Veículos</p>
+                            <p class="text-3xl font-bold text-purple-600 mt-2">{{ total_veiculos }}</p>
+                            <p class="text-xs text-gray-500 mt-1">Cadastrados</p>
+                        </div>
+                        <div class="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="fa-solid fa-car text-purple-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Eventos Próximos -->
+                <div class="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500 hover:shadow-xl transition-shadow">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-600 uppercase">Próximos 30 dias</p>
+                            <p class="text-3xl font-bold text-orange-600 mt-2">{{ eventos_proximos|length }}</p>
+                            <p class="text-xs text-gray-500 mt-1">Eventos agendados</p>
+                        </div>
+                        <div class="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center">
+                            <i class="fa-solid fa-clock text-orange-600 text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid de Conteúdo -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Próximos Eventos -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold primary-color flex items-center">
+                            <i class="fa-solid fa-calendar-check mr-2"></i>
+                            Próximos Eventos
+                        </h2>
+                        <a href="{% url 'vmm:lista_eventos' %}" 
+                           class="text-sm primary-color hover:underline font-medium">
+                            Ver todos →
+                        </a>
+                    </div>
+                    
+                    {% if eventos_proximos %}
+                    <div class="space-y-4">
+                        {% for evento in eventos_proximos %}
+                        <a href="{% url 'vmm:detalhe_evento' evento.id %}" 
+                           class="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border-l-4 
+                                  {% if evento.status == 'confirmado' %}border-green-500
+                                  {% elif evento.status == 'planejamento' %}border-yellow-500
+                                  {% else %}border-gray-500{% endif %}">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-gray-900">{{ evento.nome_escola }}</h3>
+                                    <div class="mt-2 space-y-1 text-sm text-gray-600">
+                                        <p class="flex items-center">
+                                            <i class="fa-solid fa-calendar w-4 mr-2"></i>
+                                            {{ evento.data_evento|date:"d/m/Y" }} às {{ evento.hora_inicio|time:"H:i" }}
+                                        </p>
+                                        <p class="flex items-center">
+                                            <i class="fa-solid fa-location-dot w-4 mr-2"></i>
+                                            {{ evento.cidade }}
+                                        </p>
+                                        <p class="flex items-center">
+                                            <i class="fa-solid fa-user-group w-4 mr-2"></i>
+                                            {{ evento.voluntarioevento_set.count }} voluntário(s)
+                                        </p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
+                                        {% if evento.status == 'confirmado' %}bg-green-100 text-green-800
+                                        {% elif evento.status == 'planejamento' %}bg-yellow-100 text-yellow-800
+                                        {% elif evento.status == 'em_andamento' %}bg-blue-100 text-blue-800
+                                        {% elif evento.status == 'concluido' %}bg-gray-100 text-gray-800
+                                        {% else %}bg-red-100 text-red-800{% endif %}">
+                                        {{ evento.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12 text-gray-500">
+                        <i class="fa-solid fa-calendar-xmark text-4xl mb-4"></i>
+                        <p>Nenhum evento nos próximos 30 dias</p>
+                        <a href="{% url 'vmm:cadastro_evento' %}" 
+                           class="inline-block mt-4 px-6 py-2 accent-gradient text-white rounded-lg hover:opacity-90">
+                            Cadastrar Evento
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Voluntários Mais Ativos -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold primary-color flex items-center">
+                            <i class="fa-solid fa-star mr-2"></i>
+                            Voluntários Mais Ativos
+                        </h2>
+                        <a href="{% url 'vmm:lista_voluntarios' %}" 
+                           class="text-sm primary-color hover:underline font-medium">
+                            Ver todos →
+                        </a>
+                    </div>
+                    
+                    {% if voluntarios_mais_ativos %}
+                    <div class="space-y-3">
+                        {% for voluntario in voluntarios_mais_ativos %}
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-white font-bold">
+                                    {{ voluntario.nome_completo|first }}
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-900">{{ voluntario.nome_completo }}</p>
+                                    <p class="text-sm text-gray-600">{{ voluntario.get_agencia_display }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold primary-color">{{ voluntario.num_eventos }}</p>
+                                <p class="text-xs text-gray-600">evento{{ voluntario.num_eventos|pluralize }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-12 text-gray-500">
+                        <i class="fa-solid fa-user-slash text-4xl mb-4"></i>
+                        <p>Nenhum voluntário participou de eventos ainda</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Eventos Por Status -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h2 class="text-xl font-bold primary-color mb-6 flex items-center">
+                        <i class="fa-solid fa-chart-pie mr-2"></i>
+                        Eventos por Status
+                    </h2>
+                    
+                    {% if eventos_por_status %}
+                    <div class="space-y-4">
+                        {% for status in eventos_por_status %}
+                        <div>
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-sm font-medium text-gray-700">
+                                    {% if status.status == 'planejamento' %}Em Planejamento
+                                    {% elif status.status == 'confirmado' %}Confirmados
+                                    {% elif status.status == 'em_andamento' %}Em Andamento
+                                    {% elif status.status == 'concluido' %}Concluídos
+                                    {% else %}Cancelados{% endif %}
+                                </span>
+                                <span class="text-sm font-bold text-gray-900">{{ status.total }}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="h-2 rounded-full 
+                                    {% if status.status == 'confirmado' %}bg-green-500
+                                    {% elif status.status == 'planejamento' %}bg-yellow-500
+                                    {% elif status.status == 'em_andamento' %}bg-blue-500
+                                    {% elif status.status == 'concluido' %}bg-gray-500
+                                    {% else %}bg-red-500{% endif %}"
+                                    style="width: {% widthratio status.total total_eventos 100 %}%">
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8 text-gray-500">
+                        <p>Nenhum evento cadastrado</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Veículos Mais Utilizados -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-bold primary-color flex items-center">
+                            <i class="fa-solid fa-car-side mr-2"></i>
+                            Veículos Mais Utilizados
+                        </h2>
+                        <a href="{% url 'vmm:lista_veiculos' %}" 
+                           class="text-sm primary-color hover:underline font-medium">
+                            Ver todos →
+                        </a>
+                    </div>
+                    
+                    {% if veiculos_mais_usados %}
+                    <div class="space-y-3">
+                        {% for veiculo in veiculos_mais_usados %}
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                    <i class="fa-solid fa-car text-purple-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-900">{{ veiculo.nome }}</p>
+                                    <p class="text-sm text-gray-600">{{ veiculo.placa }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xl font-bold text-purple-600">{{ veiculo.num_eventos }}</p>
+                                <p class="text-xs text-gray-600">uso{{ veiculo.num_eventos|pluralize }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fa-solid fa-car-side text-4xl mb-4"></i>
+                        <p>Nenhum veículo utilizado ainda</p>
+                        <a href="{% url 'vmm:cadastro_veiculo' %}" 
+                           class="inline-block mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                            Cadastrar Veículo
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <!-- Ações Rápidas -->
+            <div class="mt-8 bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-bold primary-color mb-6 flex items-center">
+                    <i class="fa-solid fa-bolt mr-2"></i>
+                    Ações Rápidas
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <a href="{% url 'vmm:cadastro_evento' %}" 
+                       class="flex items-center justify-center space-x-3 p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200">
+                        <i class="fa-solid fa-plus-circle text-2xl"></i>
+                        <span class="font-semibold">Novo Evento</span>
+                    </a>
+                    
+                    <a href="{% url 'vmm:lista_voluntarios' %}" 
+                       class="flex items-center justify-center space-x-3 p-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors border border-blue-200">
+                        <i class="fa-solid fa-users text-2xl"></i>
+                        <span class="font-semibold">Ver Voluntários</span>
+                    </a>
+                    
+                    <a href="{% url 'vmm:calendario_eventos' %}" 
+                       class="flex items-center justify-center space-x-3 p-4 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors border border-purple-200">
+                        <i class="fa-solid fa-calendar text-2xl"></i>
+                        <span class="font-semibold">Calendário</span>
+                    </a>
+                    
+                    <a href="{% url 'vmm:cadastro_veiculo' %}" 
+                       class="flex items-center justify-center space-x-3 p-4 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors border border-orange-200">
+                        <i class="fa-solid fa-car-side text-2xl"></i>
+                        <span class="font-semibold">Novo Veículo</span>
+                    </a>
+                </div>
+            </div>
+
+        </main>
+    </div>
+{% endblock %}
