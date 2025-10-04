@@ -216,7 +216,7 @@ class Evento(models.Model):
     data_atualizacao = models.DateTimeField(auto_now=True)
 
     def clean(self):
-        """Validações customizadas"""
+        """Validações de conflito de horário e veículo"""
         super().clean()
         
         # Validar horários
@@ -255,6 +255,21 @@ class Evento(models.Model):
 
     def __str__(self):
         return f"{self.nome_escola} - {self.data_evento.strftime('%d/%m/%Y')}"
+    
+class EventoVeiculo(models.Model):
+    evento = models.ForeignKey(Evento, on_delete=models.CASCADE)
+    veiculo = models.ForeignKey(Veiculo, on_delete=models.CASCADE)
+    motorista = models.ForeignKey(
+        Voluntario, 
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='veiculos_dirigidos'
+    )
+    observacoes = models.TextField(blank=True)
+    
+    class Meta:
+        unique_together = ['evento', 'veiculo']
 
 
 class VoluntarioEvento(models.Model):
@@ -264,10 +279,9 @@ class VoluntarioEvento(models.Model):
         ('coordenador', 'Coordenador do Evento'),
         ('motorista', 'Motorista'),
         ('apoio_logistico', 'Apoio Logístico'),
-        ('palestrante', 'Palestrante'),
+        ('triagem', 'Triagem'),
         ('monitor', 'Monitor de Atividades'),
         ('fotografo', 'Fotógrafo/Registro'),
-        ('atendimento', 'Atendimento ao Público'),
         ('outro', 'Outro'),
     ]
     
@@ -310,6 +324,15 @@ class VoluntarioEvento(models.Model):
     # Auditoria
     data_vinculo = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
+
+    vai_no_veiculo = models.BooleanField(default=False)
+    evento_veiculo = models.ForeignKey(
+        EventoVeiculo,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Qual veículo o voluntário vai utilizar"
+    )
 
     def clean(self):
         """Validações de conflito de horário"""
