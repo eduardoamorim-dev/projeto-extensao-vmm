@@ -1,28 +1,29 @@
+# views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_protect
-from django.db.models import Count
-from .models import Voluntario
+from django.db.models import Count, Q, Prefetch
 from django.core.paginator import Paginator
-from django.db.models import Q
 from django.utils import timezone
-from datetime import timedelta
-
+from django.http import JsonResponse
+from datetime import datetime, timedelta
 import re
 
+from .models import Voluntario, Evento, Veiculo, VoluntarioEvento
+
+
+# ==================== VIEWS DE VOLUNTÁRIOS (MANTIDAS) ====================
 
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def cadastro_voluntario(request):
-    """
-    View para inscrição de voluntários
-    """
+    """View para inscrição de voluntários - mantida do código original"""
     if request.method == "POST":
         try:
-            # Capturar dados do formulário
+            # Capturar dados
             nome_completo = request.POST.get('nome_completo', '').strip()
             email_corporativo = request.POST.get('email_corporativo', '').strip().lower()
             cpf = request.POST.get('cpf', '').strip()
@@ -32,17 +33,15 @@ def cadastro_voluntario(request):
             tamanho_camiseta = request.POST.get('tamanho_camiseta', '')
             experiencia_anterior = request.POST.get('experiencia_anterior', '').strip()
 
-            # Processar agência (extrair código se veio no formato "001 - Nome da Agência")
+            # Processar agência
             agencia = agencia_raw
             if ' - ' in agencia_raw:
                 agencia = agencia_raw.split(' - ')[0].strip()
 
-            # Validações básicas
+            # Validações
             errors = []
             
-            if not nome_completo:
-                errors.append("Nome completo é obrigatório.")
-            elif len(nome_completo) < 3:
+            if not nome_completo or len(nome_completo) < 3:
                 errors.append("Nome deve ter pelo menos 3 caracteres.")
                 
             if not email_corporativo:
@@ -53,7 +52,6 @@ def cadastro_voluntario(request):
             if not cpf:
                 errors.append("CPF é obrigatório.")
             else:
-                # Validar formato do CPF
                 cpf_limpo = re.sub(r'[^\d]', '', cpf)
                 if len(cpf_limpo) != 11:
                     errors.append("CPF deve conter 11 dígitos.")
@@ -63,7 +61,6 @@ def cadastro_voluntario(request):
             if not telefone:
                 errors.append("Telefone é obrigatório.")
             else:
-                # Validar formato do telefone
                 telefone_pattern = r'^\(\d{2}\)\s\d{4,5}-\d{4}$'
                 if not re.match(telefone_pattern, telefone):
                     errors.append("Telefone deve estar no formato: (11) 99999-9999")
@@ -71,7 +68,6 @@ def cadastro_voluntario(request):
             if not agencia:
                 errors.append("Agência é obrigatória.")
             else:
-                # Verificar se a agência existe na lista
                 agencias_validas = [codigo for codigo, nome in Voluntario.AGENCIAS_CHOICES]
                 if agencia not in agencias_validas:
                     errors.append("Agência selecionada não é válida.")
@@ -82,12 +78,10 @@ def cadastro_voluntario(request):
             if not tamanho_camiseta:
                 errors.append("Tamanho da camiseta é obrigatório.")
             else:
-                # Verificar se o tamanho da camiseta é válido
                 tamanhos_validos = [codigo for codigo, nome in Voluntario.TAMANHOS_CAMISETA]
                 if tamanho_camiseta not in tamanhos_validos:
                     errors.append("Tamanho da camiseta selecionado não é válido.")
 
-            # Se há erros, retornar para o formulário
             if errors:
                 for error in errors:
                     messages.error(request, error)
@@ -97,28 +91,25 @@ def cadastro_voluntario(request):
                     'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
                 })
 
-            # Limpar CPF para armazenamento (apenas números)
+            # Criar voluntário
             cpf_limpo = re.sub(r'[^\d]', '', cpf)
-
-            # Criar o voluntário
             voluntario = Voluntario.objects.create(
                 nome_completo=nome_completo,
                 email_corporativo=email_corporativo,
-                cpf=cpf_limpo,  # Salvar CPF limpo
+                cpf=cpf_limpo,
                 telefone=telefone,
-                agencia=agencia,  # Salvar apenas o código
+                agencia=agencia,
                 setor=setor,
                 tamanho_camiseta=tamanho_camiseta,
-                cargo=""  # Campo vazio para ser preenchido pelo admin
+                cargo="",
+                experiencia_anterior=experiencia_anterior if experiencia_anterior else None
             )
 
-            # Mensagem de sucesso
             messages.success(
                 request, 
                 f"Inscrição realizada com sucesso! Obrigado {nome_completo}, "
                 "sua candidatura foi registrada e será analisada pela equipe organizadora."
             )
-            
             return redirect('vmm:cadastro_voluntario') 
 
         except IntegrityError as e:
@@ -133,7 +124,6 @@ def cadastro_voluntario(request):
             else:
                 messages.error(request, "Erro ao processar inscrição. Tente novamente.")
             
-
             return render(request, 'cadastro_voluntario.html', {
                 'form_data': request.POST,
                 'agencias': Voluntario.AGENCIAS_CHOICES,
@@ -141,40 +131,32 @@ def cadastro_voluntario(request):
             })
             
         except Exception as e:
-            print(f"Erro inesperado no cadastro: {e}")
-            
             messages.error(
                 request, 
-                "Ocorreu um erro inesperado. Por favor, tente novamente ou "
-                "entre em contato com o suporte."
+                "Ocorreu um erro inesperado. Por favor, tente novamente."
             )
-            
             return render(request, 'cadastro_voluntario.html', {
                 'form_data': request.POST,
                 'agencias': Voluntario.AGENCIAS_CHOICES,
                 'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
             })
 
-    # GET request - mostrar formulário limpo
     return render(request, 'cadastro_voluntario.html', {
         'agencias': Voluntario.AGENCIAS_CHOICES,
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
     })
 
+
 def lista_voluntarios(request):
-    """
-    View para listar todos os voluntários (apenas para staff)
-    """
-    # Buscar todos os voluntários para estatísticas gerais
+    """View para listar voluntários - mantida do código original"""
     todos_voluntarios = Voluntario.objects.all()
     voluntarios = todos_voluntarios.order_by('-data_cadastro')
     
     # Filtros
-    agencias_filtro = request.GET.getlist('agencia')  # Para multi-select
+    agencias_filtro = request.GET.getlist('agencia')
     status_filtro = request.GET.get('status')
     busca = request.GET.get('busca', '').strip()
     
-    # Aplicar filtro de busca por nome
     if busca:
         voluntarios = voluntarios.filter(
             Q(nome_completo__icontains=busca) |
@@ -182,20 +164,18 @@ def lista_voluntarios(request):
             Q(cpf__icontains=busca)
         )
     
-    # Aplicar filtro de agências (multi-select)
     if agencias_filtro:
         voluntarios = voluntarios.filter(agencia__in=agencias_filtro)
     
-    # Aplicar filtro de status
     if status_filtro:
         voluntarios = voluntarios.filter(status=status_filtro)
     
     # Paginação
-    paginator = Paginator(voluntarios, 10)  # 10 voluntários por página
+    paginator = Paginator(voluntarios, 10)
     page_number = request.GET.get('page')
     voluntarios_page = paginator.get_page(page_number)
     
-    # Estatísticas agregadas (sempre com todos os dados)
+    # Estatísticas
     voluntarios_por_agencia = (
         todos_voluntarios.values('agencia')
         .annotate(total=Count('id'))
@@ -208,7 +188,6 @@ def lista_voluntarios(request):
         .order_by('tamanho_camiseta')
     )
     
-    # Converter códigos para nomes
     def get_nome_agencia(codigo):
         for cod, nome in Voluntario.AGENCIAS_CHOICES:
             if cod == codigo:
@@ -221,25 +200,18 @@ def lista_voluntarios(request):
                 return nome
         return codigo
     
-    # Preparar dados para o template
-    agencias_stats = []
-    for item in voluntarios_por_agencia:
-        agencias_stats.append({
-            'nome': get_nome_agencia(item['agencia']),
-            'total': item['total']
-        })
+    agencias_stats = [
+        {'nome': get_nome_agencia(item['agencia']), 'total': item['total']}
+        for item in voluntarios_por_agencia
+    ]
     
-    camisetas_stats = []
-    for item in camisetas_por_tamanho:
-        camisetas_stats.append({
-            'nome': get_nome_tamanho(item['tamanho_camiseta']),
-            'total': item['total']
-        })
-
-        
+    camisetas_stats = [
+        {'nome': get_nome_tamanho(item['tamanho_camiseta']), 'total': item['total']}
+        for item in camisetas_por_tamanho
+    ]
     
     context = {
-        'voluntarios': voluntarios_page,  
+        'voluntarios': voluntarios_page,
         'agencias': Voluntario.AGENCIAS_CHOICES,
         'status_choices': Voluntario.STATUS_CHOICES,
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
@@ -248,7 +220,6 @@ def lista_voluntarios(request):
         'busca': busca,
         'agencias_stats': agencias_stats,
         'camisetas_stats': camisetas_stats,
-        # Informações da paginação e estatísticas
         'total_voluntarios': todos_voluntarios.count(),
         'cadastros_recentes': todos_voluntarios.filter(
             data_cadastro__gte=timezone.now() - timedelta(days=7)
@@ -260,16 +231,14 @@ def lista_voluntarios(request):
 
     return render(request, 'admin_voluntarios_lista.html', context)
 
+
 @csrf_protect
 def editar_voluntario(request, voluntario_id):
-    """
-    View para editar voluntário
-    """
+    """View para editar voluntário - mantida do código original"""
     voluntario = get_object_or_404(Voluntario, id=voluntario_id)
     
     if request.method == "POST":
         try:
-            # Capturar dados do formulário
             voluntario.nome_completo = request.POST.get('nome_completo', '').strip()
             voluntario.email_corporativo = request.POST.get('email_corporativo', '').strip().lower()
             voluntario.cpf = request.POST.get('cpf', '').strip()
@@ -280,11 +249,10 @@ def editar_voluntario(request, voluntario_id):
             voluntario.cargo = request.POST.get('cargo', '').strip()
             voluntario.status = request.POST.get('status', '')
             
-            # Tratar experiencia_anterior - converter None para vazio
             experiencia_raw = request.POST.get('experiencia_anterior', '').strip()
             voluntario.experiencia_anterior = experiencia_raw if experiencia_raw and experiencia_raw != 'None' else None
             
-            # Validações básicas
+            # Validações
             errors = []
             
             if not voluntario.nome_completo or len(voluntario.nome_completo) < 3:
@@ -293,7 +261,6 @@ def editar_voluntario(request, voluntario_id):
             if not voluntario.email_corporativo.endswith('@sicoob.com.br'):
                 errors.append("Email deve ser do domínio @sicoob.com.br")
                 
-            # Validar CPF
             if voluntario.cpf:
                 cpf_limpo = re.sub(r'[^\d]', '', voluntario.cpf)
                 if len(cpf_limpo) != 11:
@@ -301,23 +268,19 @@ def editar_voluntario(request, voluntario_id):
                 elif not validar_cpf(cpf_limpo):
                     errors.append("CPF inválido.")
                     
-            # Validar telefone
             if voluntario.telefone:
                 telefone_pattern = r'^\(\d{2}\)\s\d{4,5}-\d{4}$'
                 if not re.match(telefone_pattern, voluntario.telefone):
                     errors.append("Telefone deve estar no formato: (11) 99999-9999")
                     
-            # Validar agência
             agencias_validas = [codigo for codigo, nome in Voluntario.AGENCIAS_CHOICES]
             if voluntario.agencia not in agencias_validas:
                 errors.append("Agência selecionada não é válida.")
                 
-            # Validar tamanho
             tamanhos_validos = [codigo for codigo, nome in Voluntario.TAMANHOS_CAMISETA]
             if voluntario.tamanho_camiseta not in tamanhos_validos:
                 errors.append("Tamanho da camiseta selecionado não é válido.")
                 
-            # Validar status
             status_validos = [codigo for codigo, nome in Voluntario.STATUS_CHOICES]
             if voluntario.status not in status_validos:
                 errors.append("Status selecionado não é válido.")
@@ -325,7 +288,6 @@ def editar_voluntario(request, voluntario_id):
             if errors:
                 for error in errors:
                     messages.error(request, error)
-                # Formatar CPF para exibição em caso de erro
                 cpf_formatado = voluntario.formatar_cpf(voluntario.cpf) if voluntario.cpf else ''
                 experiencia_display = voluntario.experiencia_anterior if voluntario.experiencia_anterior and voluntario.experiencia_anterior != 'None' else ''
                 return render(request, 'editar_voluntario.html', {
@@ -337,9 +299,7 @@ def editar_voluntario(request, voluntario_id):
                     'status_choices': Voluntario.STATUS_CHOICES,
                 })
             
-            # Limpar CPF para armazenamento
             voluntario.cpf = re.sub(r'[^\d]', '', voluntario.cpf)
-            
             voluntario.save()
             messages.success(request, f'Voluntário {voluntario.nome_completo} atualizado com sucesso!')
             return redirect('vmm:lista_voluntarios')
@@ -356,7 +316,6 @@ def editar_voluntario(request, voluntario_id):
         except Exception as e:
             messages.error(request, "Erro inesperado ao atualizar voluntário.")
     
-    # Formatar CPF para exibição (GET request ou erros)
     cpf_formatado = voluntario.formatar_cpf(voluntario.cpf) if voluntario.cpf else ''
     experiencia_display = voluntario.experiencia_anterior if voluntario.experiencia_anterior and voluntario.experiencia_anterior != 'None' else ''
     
@@ -369,12 +328,11 @@ def editar_voluntario(request, voluntario_id):
         'status_choices': Voluntario.STATUS_CHOICES,
     })
 
+
 @csrf_protect
 @require_http_methods(["POST"])
 def excluir_voluntario(request, voluntario_id):
-    """
-    View para excluir voluntário
-    """
+    """View para excluir voluntário - mantida"""
     voluntario = get_object_or_404(Voluntario, id=voluntario_id)
     nome = voluntario.nome_completo
     
@@ -387,55 +345,1036 @@ def excluir_voluntario(request, voluntario_id):
     return redirect('vmm:lista_voluntarios')
 
 
+# ==================== VIEWS DE VEÍCULOS ====================
+
+def lista_veiculos(request):
+    """Lista todos os veículos com filtros"""
+    veiculos = Veiculo.objects.filter(ativo=True).order_by('nome')
+    
+    # Filtros
+    status_filtro = request.GET.get('status')
+    tipo_filtro = request.GET.get('tipo')
+    busca = request.GET.get('busca', '').strip()
+    
+    if busca:
+        veiculos = veiculos.filter(
+            Q(nome__icontains=busca) |
+            Q(placa__icontains=busca)
+        )
+    
+    if status_filtro:
+        veiculos = veiculos.filter(status=status_filtro)
+    
+    if tipo_filtro:
+        veiculos = veiculos.filter(tipo=tipo_filtro)
+    
+    # Paginação
+    paginator = Paginator(veiculos, 10)
+    page_number = request.GET.get('page')
+    veiculos_page = paginator.get_page(page_number)
+    
+    context = {
+        'veiculos': veiculos_page,
+        'status_choices': Veiculo.STATUS_VEICULO,
+        'tipo_choices': Veiculo.TIPO_VEICULO,
+        'status_filtro': status_filtro,
+        'tipo_filtro': tipo_filtro,
+        'busca': busca,
+        'total_veiculos': Veiculo.objects.filter(ativo=True).count(),
+        'disponiveis': Veiculo.objects.filter(status='disponivel', ativo=True).count(),
+    }
+    
+    return render(request, 'veiculos_lista.html', context)
+
+
+@csrf_protect
+@require_http_methods(["GET", "POST"])
+def cadastro_veiculo(request):
+    """Cadastrar novo veículo"""
+    if request.method == "POST":
+        try:
+            nome = request.POST.get('nome', '').strip()
+            placa = request.POST.get('placa', '').strip().upper()
+            tipo = request.POST.get('tipo', '')
+            capacidade = request.POST.get('capacidade', 5)
+            status = request.POST.get('status', 'disponivel')
+            observacoes = request.POST.get('observacoes', '').strip()
+            
+            # Validações
+            errors = []
+            
+            if not nome:
+                errors.append("Nome do veículo é obrigatório.")
+            
+            if not placa:
+                errors.append("Placa é obrigatória.")
+            elif len(placa) < 7:
+                errors.append("Placa inválida.")
+            
+            if tipo not in [t[0] for t in Veiculo.TIPO_VEICULO]:
+                errors.append("Tipo de veículo inválido.")
+            
+            try:
+                capacidade = int(capacidade)
+                if capacidade < 1 or capacidade > 50:
+                    errors.append("Capacidade deve estar entre 1 e 50.")
+            except ValueError:
+                errors.append("Capacidade inválida.")
+            
+            if errors:
+                for error in errors:
+                    messages.error(request, error)
+                return render(request, 'veiculo_cadastro.html', {
+                    'form_data': request.POST,
+                    'tipo_choices': Veiculo.TIPO_VEICULO,
+                    'status_choices': Veiculo.STATUS_VEICULO,
+                })
+            
+            # Criar veículo
+            veiculo = Veiculo.objects.create(
+                nome=nome,
+                placa=placa,
+                tipo=tipo,
+                capacidade=capacidade,
+                status=status,
+                observacoes=observacoes
+            )
+            
+            messages.success(request, f'Veículo {veiculo.nome} cadastrado com sucesso!')
+            return redirect('vmm:lista_veiculos')
+            
+        except IntegrityError:
+            messages.error(request, 'Já existe um veículo com esta placa.')
+            return render(request, 'veiculo_cadastro.html', {
+                'form_data': request.POST,
+                'tipo_choices': Veiculo.TIPO_VEICULO,
+                'status_choices': Veiculo.STATUS_VEICULO,
+            })
+        except Exception as e:
+            messages.error(request, 'Erro ao cadastrar veículo.')
+            return render(request, 'veiculo_cadastro.html', {
+                'form_data': request.POST,
+                'tipo_choices': Veiculo.TIPO_VEICULO,
+                'status_choices': Veiculo.STATUS_VEICULO,
+            })
+    
+    return render(request, 'veiculo_cadastro.html', {
+        'tipo_choices': Veiculo.TIPO_VEICULO,
+        'status_choices': Veiculo.STATUS_VEICULO,
+    })
+
+
+@csrf_protect
+def editar_veiculo(request, veiculo_id):
+    """Editar veículo existente"""
+    veiculo = get_object_or_404(Veiculo, id=veiculo_id)
+    
+    if request.method == "POST":
+        try:
+            veiculo.nome = request.POST.get('nome', '').strip()
+            veiculo.placa = request.POST.get('placa', '').strip().upper()
+            veiculo.tipo = request.POST.get('tipo', '')
+            veiculo.capacidade = int(request.POST.get('capacidade', 5))
+            veiculo.status = request.POST.get('status', '')
+            veiculo.observacoes = request.POST.get('observacoes', '').strip()
+            
+            # Validações
+            errors = []
+            
+            if not veiculo.nome:
+                errors.append("Nome do veículo é obrigatório.")
+            
+            if not veiculo.placa or len(veiculo.placa) < 7:
+                errors.append("Placa inválida.")
+            
+            if veiculo.tipo not in [t[0] for t in Veiculo.TIPO_VEICULO]:
+                errors.append("Tipo de veículo inválido.")
+            
+            if veiculo.capacidade < 1 or veiculo.capacidade > 50:
+                errors.append("Capacidade deve estar entre 1 e 50.")
+            
+            if errors:
+                for error in errors:
+                    messages.error(request, error)
+                return render(request, 'veiculo_editar.html', {
+                    'veiculo': veiculo,
+                    'tipo_choices': Veiculo.TIPO_VEICULO,
+                    'status_choices': Veiculo.STATUS_VEICULO,
+                })
+            
+            veiculo.save()
+            messages.success(request, f'Veículo {veiculo.nome} atualizado com sucesso!')
+            return redirect('vmm:lista_veiculos')
+            
+        except IntegrityError:
+            messages.error(request, 'Já existe um veículo com esta placa.')
+        except Exception as e:
+            messages.error(request, 'Erro ao atualizar veículo.')
+    
+    return render(request, 'veiculo_editar.html', {
+        'veiculo': veiculo,
+        'tipo_choices': Veiculo.TIPO_VEICULO,
+        'status_choices': Veiculo.STATUS_VEICULO,
+    })
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def excluir_veiculo(request, veiculo_id):
+    """Excluir veículo (soft delete)"""
+    veiculo = get_object_or_404(Veiculo, id=veiculo_id)
+    nome = veiculo.nome
+    
+    try:
+        # Verificar se há eventos futuros com este veículo
+        eventos_futuros = Evento.objects.filter(
+            veiculo=veiculo,
+            data_evento__gte=timezone.now().date()
+        ).count()
+        
+        if eventos_futuros > 0:
+            messages.warning(
+                request, 
+                f'O veículo {nome} possui {eventos_futuros} evento(s) futuro(s). '
+                'Ele foi desativado mas não excluído.'
+            )
+            veiculo.ativo = False
+            veiculo.status = 'indisponivel'
+            veiculo.save()
+        else:
+            veiculo.delete()
+            messages.success(request, f'Veículo {nome} excluído com sucesso!')
+    except Exception as e:
+        messages.error(request, 'Erro ao excluir veículo.')
+    
+    return redirect('vmm:lista_veiculos')
+
+
+# ==================== VIEWS DE EVENTOS ====================
+
+def lista_eventos(request):
+    """Lista todos os eventos com filtros"""
+    eventos = Evento.objects.select_related('veiculo').prefetch_related(
+        Prefetch(
+            'voluntarioevento_set',
+            queryset=VoluntarioEvento.objects.select_related('voluntario')
+        )
+    ).order_by('-data_evento', '-hora_inicio')
+    
+    # Filtros
+    status_filtro = request.GET.get('status')
+    cidade_filtro = request.GET.get('cidade')
+    data_inicio = request.GET.get('data_inicio')
+    data_fim = request.GET.get('data_fim')
+    busca = request.GET.get('busca', '').strip()
+    
+    if busca:
+        eventos = eventos.filter(
+            Q(nome_escola__icontains=busca) |
+            Q(responsavel_escola__icontains=busca) |
+            Q(cidade__icontains=busca)
+        )
+    
+    if status_filtro:
+        eventos = eventos.filter(status=status_filtro)
+    
+    if cidade_filtro:
+        eventos = eventos.filter(cidade__icontains=cidade_filtro)
+    
+    if data_inicio:
+        try:
+            data_inicio_obj = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            eventos = eventos.filter(data_evento__gte=data_inicio_obj)
+        except ValueError:
+            pass
+    
+    if data_fim:
+        try:
+            data_fim_obj = datetime.strptime(data_fim, '%Y-%m-%d').date()
+            eventos = eventos.filter(data_evento__lte=data_fim_obj)
+        except ValueError:
+            pass
+    
+    # Paginação
+    paginator = Paginator(eventos, 10)
+    page_number = request.GET.get('page')
+    eventos_page = paginator.get_page(page_number)
+    
+    # Estatísticas
+    total_eventos = Evento.objects.count()
+    eventos_futuros = Evento.objects.filter(data_evento__gte=timezone.now().date()).count()
+    eventos_mes = Evento.objects.filter(
+        data_evento__year=timezone.now().year,
+        data_evento__month=timezone.now().month
+    ).count()
+    
+    # Cidades únicas para filtro
+    cidades = Evento.objects.values_list('cidade', flat=True).distinct().order_by('cidade')
+    
+    context = {
+        'eventos': eventos_page,
+        'status_choices': Evento.STATUS_EVENTO,
+        'status_filtro': status_filtro,
+        'cidade_filtro': cidade_filtro,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'busca': busca,
+        'cidades': cidades,
+        'total_eventos': total_eventos,
+        'eventos_futuros': eventos_futuros,
+        'eventos_mes': eventos_mes,
+    }
+    
+    return render(request, 'eventos_lista.html', context)
+
+
+@csrf_protect
+@require_http_methods(["GET", "POST"])
+def cadastro_evento(request):
+    """Cadastrar novo evento"""
+    if request.method == "POST":
+        try:
+            with transaction.atomic():
+                # Capturar dados do evento
+                nome_escola = request.POST.get('nome_escola', '').strip()
+                responsavel_escola = request.POST.get('responsavel_escola', '').strip()
+                telefone_responsavel = request.POST.get('telefone_responsavel', '').strip()
+                cidade = request.POST.get('cidade', '').strip()
+                endereco = request.POST.get('endereco', '').strip()
+                
+                data_evento_str = request.POST.get('data_evento', '')
+                hora_inicio_str = request.POST.get('hora_inicio', '')
+                hora_fim_str = request.POST.get('hora_fim', '')
+                
+                qtd_tv = request.POST.get('qtd_tv', 0)
+                qtd_computador = request.POST.get('qtd_computador', 0)
+                veiculo_id = request.POST.get('veiculo', '')
+                status = request.POST.get('status', 'planejamento')
+                observacoes = request.POST.get('observacoes', '').strip()
+                
+                # Validações
+                errors = []
+                
+                if not nome_escola:
+                    errors.append("Nome da escola é obrigatório.")
+                
+                if not responsavel_escola:
+                    errors.append("Nome do responsável é obrigatório.")
+                
+                if not telefone_responsavel:
+                    errors.append("Telefone do responsável é obrigatório.")
+                
+                if not cidade:
+                    errors.append("Cidade é obrigatória.")
+                
+                if not endereco:
+                    errors.append("Endereço é obrigatório.")
+                
+                # Validar data e hora
+                try:
+                    data_evento = datetime.strptime(data_evento_str, '%Y-%m-%d').date()
+                except ValueError:
+                    errors.append("Data do evento inválida.")
+                    data_evento = None
+                
+                try:
+                    hora_inicio = datetime.strptime(hora_inicio_str, '%H:%M').time()
+                except ValueError:
+                    errors.append("Hora de início inválida.")
+                    hora_inicio = None
+                
+                try:
+                    hora_fim = datetime.strptime(hora_fim_str, '%H:%M').time()
+                except ValueError:
+                    errors.append("Hora de término inválida.")
+                    hora_fim = None
+                
+                # Validar horários
+                if hora_inicio and hora_fim:
+                    if hora_inicio >= hora_fim:
+                        errors.append("A hora de término deve ser posterior à hora de início.")
+                
+                # Validar veículo
+                veiculo = None
+                if veiculo_id:
+                    try:
+                        veiculo = Veiculo.objects.get(id=veiculo_id, ativo=True)
+                        # Verificar disponibilidade do veículo
+                        if data_evento and hora_inicio and hora_fim:
+                            if not veiculo.verificar_disponibilidade(data_evento, hora_inicio, hora_fim):
+                                errors.append(f'O veículo {veiculo.nome} já está alocado neste horário.')
+                    except Veiculo.DoesNotExist:
+                        errors.append("Veículo selecionado não existe.")
+                
+                # Validar quantidades
+                try:
+                    qtd_tv = int(qtd_tv)
+                    if qtd_tv < 0:
+                        errors.append("Quantidade de TVs deve ser positiva.")
+                except ValueError:
+                    qtd_tv = 0
+                
+                try:
+                    qtd_computador = int(qtd_computador)
+                    if qtd_computador < 0:
+                        errors.append("Quantidade de computadores deve ser positiva.")
+                except ValueError:
+                    qtd_computador = 0
+                
+                if errors:
+                    for error in errors:
+                        messages.error(request, error)
+                    return render(request, 'evento_cadastro.html', {
+                        'form_data': request.POST,
+                        'veiculos': Veiculo.objects.filter(status='disponivel', ativo=True),
+                        'status_choices': Evento.STATUS_EVENTO,
+                    })
+                
+                # Criar evento
+                evento = Evento.objects.create(
+                    nome_escola=nome_escola,
+                    responsavel_escola=responsavel_escola,
+                    telefone_responsavel=telefone_responsavel,
+                    cidade=cidade,
+                    endereco=endereco,
+                    data_evento=data_evento,
+                    hora_inicio=hora_inicio,
+                    hora_fim=hora_fim,
+                    qtd_tv=qtd_tv,
+                    qtd_computador=qtd_computador,
+                    veiculo=veiculo,
+                    status=status,
+                    observacoes=observacoes,
+                    criado_por=request.user.username if request.user.is_authenticated else 'Sistema'
+                )
+                
+                messages.success(request, f'Evento "{evento.nome_escola}" cadastrado com sucesso!')
+                return redirect('vmm:detalhe_evento', evento_id=evento.id)
+                
+        except Exception as e:
+            messages.error(request, f'Erro ao cadastrar evento: {str(e)}')
+            return render(request, 'evento_cadastro.html', {
+                'form_data': request.POST,
+                'veiculos': Veiculo.objects.filter(status='disponivel', ativo=True),
+                'status_choices': Evento.STATUS_EVENTO,
+            })
+    
+    return render(request, 'evento_cadastro.html', {
+        'veiculos': Veiculo.objects.filter(status='disponivel', ativo=True),
+        'status_choices': Evento.STATUS_EVENTO,
+    })
+
+
+def detalhe_evento(request, evento_id):
+    """Visualizar detalhes completos do evento"""
+    evento = get_object_or_404(
+        Evento.objects.select_related('veiculo').prefetch_related(
+            Prefetch(
+                'voluntarioevento_set',
+                queryset=VoluntarioEvento.objects.select_related('voluntario').order_by('funcao')
+            )
+        ),
+        id=evento_id
+    )
+    
+    # Voluntários do evento agrupados por função
+    voluntarios_evento = evento.voluntarioevento_set.all()
+    
+    # Voluntários disponíveis (não alocados neste horário)
+    voluntarios_disponiveis = Voluntario.objects.filter(
+        status='ativo'
+    ).exclude(
+        id__in=voluntarios_evento.values_list('voluntario_id', flat=True)
+    )
+    
+    # Filtrar apenas os que realmente estão disponíveis no horário
+    voluntarios_disponiveis_filtrados = []
+    for vol in voluntarios_disponiveis:
+        if vol.verificar_disponibilidade(evento.data_evento, evento.hora_inicio, evento.hora_fim):
+            voluntarios_disponiveis_filtrados.append(vol)
+    
+    # Estatísticas do evento
+    total_voluntarios = voluntarios_evento.count()
+    confirmados = voluntarios_evento.filter(presenca='confirmado').count()
+    presentes = voluntarios_evento.filter(presenca='presente').count()
+    
+    # Ocupação do veículo
+    ocupacao_veiculo = 0
+    if evento.veiculo:
+        ocupacao_veiculo = voluntarios_evento.filter(vai_no_veiculo=True).count()
+    
+    context = {
+        'evento': evento,
+        'voluntarios_evento': voluntarios_evento,
+        'voluntarios_disponiveis': voluntarios_disponiveis_filtrados,
+        'funcoes': VoluntarioEvento.FUNCOES,
+        'total_voluntarios': total_voluntarios,
+        'confirmados': confirmados,
+        'presentes': presentes,
+        'ocupacao_veiculo': ocupacao_veiculo,
+        'pode_editar': evento.status in ['planejamento', 'confirmado'],
+    }
+    
+    return render(request, 'evento_detalhe.html', context)
+
+
+@csrf_protect
+def editar_evento(request, evento_id):
+    """Editar evento existente"""
+    evento = get_object_or_404(Evento, id=evento_id)
+    
+    if request.method == "POST":
+        try:
+            with transaction.atomic():
+                evento.nome_escola = request.POST.get('nome_escola', '').strip()
+                evento.responsavel_escola = request.POST.get('responsavel_escola', '').strip()
+                evento.telefone_responsavel = request.POST.get('telefone_responsavel', '').strip()
+                evento.cidade = request.POST.get('cidade', '').strip()
+                evento.endereco = request.POST.get('endereco', '').strip()
+                
+                data_evento_str = request.POST.get('data_evento', '')
+                hora_inicio_str = request.POST.get('hora_inicio', '')
+                hora_fim_str = request.POST.get('hora_fim', '')
+                
+                evento.qtd_tv = int(request.POST.get('qtd_tv', 0))
+                evento.qtd_computador = int(request.POST.get('qtd_computador', 0))
+                
+                veiculo_id = request.POST.get('veiculo', '')
+                evento.status = request.POST.get('status', '')
+                evento.observacoes = request.POST.get('observacoes', '').strip()
+                
+                # Validações
+                errors = []
+                
+                # Validar datas
+                try:
+                    evento.data_evento = datetime.strptime(data_evento_str, '%Y-%m-%d').date()
+                except ValueError:
+                    errors.append("Data do evento inválida.")
+                
+                try:
+                    evento.hora_inicio = datetime.strptime(hora_inicio_str, '%H:%M').time()
+                except ValueError:
+                    errors.append("Hora de início inválida.")
+                
+                try:
+                    evento.hora_fim = datetime.strptime(hora_fim_str, '%H:%M').time()
+                except ValueError:
+                    errors.append("Hora de término inválida.")
+                
+                # Validar veículo
+                if veiculo_id:
+                    try:
+                        veiculo = Veiculo.objects.get(id=veiculo_id, ativo=True)
+                        # Verificar disponibilidade excluindo o evento atual
+                        conflito = Evento.objects.filter(
+                            veiculo=veiculo,
+                            data_evento=evento.data_evento,
+                            hora_inicio__lt=evento.hora_fim,
+                            hora_fim__gt=evento.hora_inicio
+                        ).exclude(pk=evento.pk)
+                        
+                        if conflito.exists():
+                            errors.append(f'O veículo {veiculo.nome} já está alocado neste horário.')
+                        else:
+                            evento.veiculo = veiculo
+                    except Veiculo.DoesNotExist:
+                        errors.append("Veículo selecionado não existe.")
+                else:
+                    evento.veiculo = None
+                
+                if errors:
+                    for error in errors:
+                        messages.error(request, error)
+                    return render(request, 'evento_editar.html', {
+                        'evento': evento,
+                        'veiculos': Veiculo.objects.filter(status='disponivel', ativo=True),
+                        'status_choices': Evento.STATUS_EVENTO,
+                    })
+                
+                evento.save()
+                messages.success(request, f'Evento "{evento.nome_escola}" atualizado com sucesso!')
+                return redirect('vmm:detalhe_evento', evento_id=evento.id)
+                
+        except Exception as e:
+            messages.error(request, f'Erro ao atualizar evento: {str(e)}')
+    
+    # Formatar data e hora para o formulário
+    data_evento_formatted = evento.data_evento.strftime('%Y-%m-%d')
+    hora_inicio_formatted = evento.hora_inicio.strftime('%H:%M')
+    hora_fim_formatted = evento.hora_fim.strftime('%H:%M')
+    
+    context = {
+        'evento': evento,
+        'data_evento_formatted': data_evento_formatted,
+        'hora_inicio_formatted': hora_inicio_formatted,
+        'hora_fim_formatted': hora_fim_formatted,
+        'veiculos': Veiculo.objects.filter(status='disponivel', ativo=True),
+        'status_choices': Evento.STATUS_EVENTO,
+    }
+    
+    return render(request, 'evento_editar.html', context)
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def excluir_evento(request, evento_id):
+    """Excluir evento"""
+    evento = get_object_or_404(Evento, id=evento_id)
+    nome_escola = evento.nome_escola
+    
+    try:
+        # Verificar se o evento já está concluído
+        if evento.status == 'concluido':
+            messages.warning(
+                request,
+                f'O evento "{nome_escola}" já foi concluído e será mantido no histórico. '
+                'Status alterado para "Cancelado".'
+            )
+            evento.status = 'cancelado'
+            evento.save()
+        else:
+            evento.delete()
+            messages.success(request, f'Evento "{nome_escola}" excluído com sucesso!')
+    except Exception as e:
+        messages.error(request, 'Erro ao excluir evento.')
+    
+    return redirect('vmm:lista_eventos')
+
+
+# ==================== VIEWS DE VOLUNTÁRIOS EM EVENTOS ====================
+
+@csrf_protect
+@require_http_methods(["POST"])
+def adicionar_voluntario_evento(request, evento_id):
+    """Adicionar voluntário a um evento"""
+    evento = get_object_or_404(Evento, id=evento_id)
+    
+    try:
+        voluntario_id = request.POST.get('voluntario_id')
+        funcao = request.POST.get('funcao')
+        funcao_customizada = request.POST.get('funcao_customizada', '').strip()
+        vai_no_veiculo = request.POST.get('vai_no_veiculo') == 'on'
+        
+        if not voluntario_id or not funcao:
+            messages.error(request, 'Voluntário e função são obrigatórios.')
+            return redirect('vmm:detalhe_evento', evento_id=evento.id)
+        
+        voluntario = get_object_or_404(Voluntario, id=voluntario_id)
+        
+        # Verificar se já existe
+        if VoluntarioEvento.objects.filter(evento=evento, voluntario=voluntario).exists():
+            messages.warning(request, f'{voluntario.nome_completo} já está neste evento.')
+            return redirect('vmm:detalhe_evento', evento_id=evento.id)
+        
+        # Criar vínculo
+        vol_evento = VoluntarioEvento(
+            evento=evento,
+            voluntario=voluntario,
+            funcao=funcao,
+            funcao_customizada=funcao_customizada if funcao == 'outro' else '',
+            vai_no_veiculo=vai_no_veiculo
+        )
+        
+        # Validar (inclui verificação de conflitos)
+        vol_evento.full_clean()
+        vol_evento.save()
+        
+        messages.success(request, f'{voluntario.nome_completo} adicionado ao evento!')
+        
+    except ValidationError as e:
+        for error in e.messages:
+            messages.error(request, error)
+    except Exception as e:
+        messages.error(request, f'Erro ao adicionar voluntário: {str(e)}')
+    
+    return redirect('vmm:detalhe_evento', evento_id=evento.id)
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def remover_voluntario_evento(request, voluntario_evento_id):
+    """Remover voluntário de um evento"""
+    vol_evento = get_object_or_404(VoluntarioEvento, id=voluntario_evento_id)
+    evento_id = vol_evento.evento.id
+    nome_voluntario = vol_evento.voluntario.nome_completo
+    
+    try:
+        vol_evento.delete()
+        messages.success(request, f'{nome_voluntario} removido do evento.')
+    except Exception as e:
+        messages.error(request, 'Erro ao remover voluntário do evento.')
+    
+    return redirect('vmm:detalhe_evento', evento_id=evento_id)
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def atualizar_presenca_voluntario(request, voluntario_evento_id):
+    """Atualizar presença do voluntário no evento"""
+    vol_evento = get_object_or_404(VoluntarioEvento, id=voluntario_evento_id)
+    
+    try:
+        nova_presenca = request.POST.get('presenca')
+        
+        if nova_presenca not in [p[0] for p in VoluntarioEvento.STATUS_PRESENCA]:
+            messages.error(request, 'Status de presença inválido.')
+            return redirect('vmm:detalhe_evento', evento_id=vol_evento.evento.id)
+        
+        vol_evento.presenca = nova_presenca
+        vol_evento.save()
+        
+        messages.success(
+            request,
+            f'Presença de {vol_evento.voluntario.nome_completo} atualizada para: '
+            f'{vol_evento.get_presenca_display()}'
+        )
+    except Exception as e:
+        messages.error(request, 'Erro ao atualizar presença.')
+    
+    return redirect('vmm:detalhe_evento', evento_id=vol_evento.evento.id)
+
+
+# ==================== VIEWS AUXILIARES E API (continuação) ====================
+
+def calendario_eventos(request):
+    """View de calendário com todos os eventos"""
+    # Pegar mês e ano da query string ou usar atual
+    mes = int(request.GET.get('mes', timezone.now().month))
+    ano = int(request.GET.get('ano', timezone.now().year))
+    
+    # Eventos do mês
+    eventos = Evento.objects.filter(
+        data_evento__year=ano,
+        data_evento__month=mes
+    ).select_related('veiculo').prefetch_related('voluntarioevento_set')
+    
+    context = {
+        'eventos': eventos,
+        'mes': mes,
+        'ano': ano,
+        'mes_anterior': (mes - 1) if mes > 1 else 12,
+        'ano_anterior': ano if mes > 1 else ano - 1,
+        'mes_proximo': (mes + 1) if mes < 12 else 1,
+        'ano_proximo': ano if mes < 12 else ano + 1,
+    }
+    
+    return render(request, 'calendario_eventos.html', context)
+
+
+def dashboard_admin(request):
+    """Dashboard principal com visão geral do sistema"""
+    hoje = timezone.now().date()
+    
+    # Estatísticas gerais
+    total_voluntarios = Voluntario.objects.filter(ativo=True).count()
+    voluntarios_ativos = Voluntario.objects.filter(status='ativo', ativo=True).count()
+    total_eventos = Evento.objects.count()
+    total_veiculos = Veiculo.objects.filter(ativo=True).count()
+    
+    # Eventos próximos (próximos 30 dias)
+    eventos_proximos = Evento.objects.filter(
+        data_evento__gte=hoje,
+        data_evento__lte=hoje + timedelta(days=30),
+        status__in=['planejamento', 'confirmado']
+    ).select_related('veiculo').order_by('data_evento', 'hora_inicio')[:5]
+    
+    # Eventos do mês atual
+    eventos_mes = Evento.objects.filter(
+        data_evento__year=hoje.year,
+        data_evento__month=hoje.month
+    ).count()
+    
+    # Voluntários mais ativos (com mais participações)
+    voluntarios_mais_ativos = Voluntario.objects.annotate(
+        num_eventos=Count('voluntarioevento')
+    ).filter(num_eventos__gt=0).order_by('-num_eventos')[:5]
+    
+    # Veículos mais utilizados
+    veiculos_mais_usados = Veiculo.objects.annotate(
+        num_eventos=Count('evento')
+    ).filter(num_eventos__gt=0).order_by('-num_eventos')[:5]
+    
+    # Eventos por status
+    eventos_por_status = Evento.objects.values('status').annotate(
+        total=Count('id')
+    )
+    
+    # Alertas (eventos sem voluntários suficientes, conflitos, etc)
+    alertas = []
+    
+    # Eventos futuros sem voluntários
+    eventos_sem_voluntarios = Evento.objects.filter(
+        data_evento__gte=hoje,
+        status__in=['planejamento', 'confirmado']
+    ).annotate(
+        num_voluntarios=Count('voluntarioevento')
+    ).filter(num_voluntarios=0)
+    
+    if eventos_sem_voluntarios.exists():
+        alertas.append({
+            'tipo': 'warning',
+            'mensagem': f'{eventos_sem_voluntarios.count()} evento(s) futuro(s) sem voluntários alocados'
+        })
+    
+    # Veículos em manutenção
+    veiculos_manutencao = Veiculo.objects.filter(status='manutencao', ativo=True).count()
+    if veiculos_manutencao > 0:
+        alertas.append({
+            'tipo': 'info',
+            'mensagem': f'{veiculos_manutencao} veículo(s) em manutenção'
+        })
+    
+    context = {
+        'total_voluntarios': total_voluntarios,
+        'voluntarios_ativos': voluntarios_ativos,
+        'total_eventos': total_eventos,
+        'total_veiculos': total_veiculos,
+        'eventos_mes': eventos_mes,
+        'eventos_proximos': eventos_proximos,
+        'voluntarios_mais_ativos': voluntarios_mais_ativos,
+        'veiculos_mais_usados': veiculos_mais_usados,
+        'eventos_por_status': eventos_por_status,
+        'alertas': alertas,
+    }
+    
+    return render(request, 'dashboard_admin.html', context)
+
+
+# ==================== APIs JSON para AJAX ====================
+
+def api_verificar_disponibilidade_voluntario(request):
+    """API para verificar se voluntário está disponível em determinado horário"""
+    if request.method == "GET":
+        voluntario_id = request.GET.get('voluntario_id')
+        data_evento = request.GET.get('data_evento')
+        hora_inicio = request.GET.get('hora_inicio')
+        hora_fim = request.GET.get('hora_fim')
+        evento_id = request.GET.get('evento_id', None)  # Para excluir evento atual na edição
+        
+        try:
+            voluntario = Voluntario.objects.get(id=voluntario_id)
+            data_evento_obj = datetime.strptime(data_evento, '%Y-%m-%d').date()
+            hora_inicio_obj = datetime.strptime(hora_inicio, '%H:%M').time()
+            hora_fim_obj = datetime.strptime(hora_fim, '%H:%M').time()
+            
+            # Verificar conflitos
+            conflitos = VoluntarioEvento.objects.filter(
+                voluntario=voluntario,
+                evento__data_evento=data_evento_obj,
+                evento__hora_inicio__lt=hora_fim_obj,
+                evento__hora_fim__gt=hora_inicio_obj
+            )
+            
+            # Excluir evento atual se estiver editando
+            if evento_id:
+                conflitos = conflitos.exclude(evento_id=evento_id)
+            
+            if conflitos.exists():
+                evento_conflito = conflitos.first().evento
+                return JsonResponse({
+                    'disponivel': False,
+                    'mensagem': f'Voluntário já alocado no evento "{evento_conflito.nome_escola}" '
+                               f'em {evento_conflito.data_evento.strftime("%d/%m/%Y")} '
+                               f'das {evento_conflito.hora_inicio.strftime("%H:%M")} '
+                               f'às {evento_conflito.hora_fim.strftime("%H:%M")}'
+                })
+            
+            return JsonResponse({
+                'disponivel': True,
+                'mensagem': 'Voluntário disponível'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'disponivel': False,
+                'mensagem': f'Erro ao verificar disponibilidade: {str(e)}'
+            }, status=400)
+    
+    return JsonResponse({'erro': 'Método não permitido'}, status=405)
+
+
+def api_verificar_disponibilidade_veiculo(request):
+    """API para verificar se veículo está disponível em determinado horário"""
+    if request.method == "GET":
+        veiculo_id = request.GET.get('veiculo_id')
+        data_evento = request.GET.get('data_evento')
+        hora_inicio = request.GET.get('hora_inicio')
+        hora_fim = request.GET.get('hora_fim')
+        evento_id = request.GET.get('evento_id', None)
+        
+        try:
+            veiculo = Veiculo.objects.get(id=veiculo_id)
+            data_evento_obj = datetime.strptime(data_evento, '%Y-%m-%d').date()
+            hora_inicio_obj = datetime.strptime(hora_inicio, '%H:%M').time()
+            hora_fim_obj = datetime.strptime(hora_fim, '%H:%M').time()
+            
+            # Verificar status do veículo
+            if veiculo.status != 'disponivel':
+                return JsonResponse({
+                    'disponivel': False,
+                    'mensagem': f'Veículo está {veiculo.get_status_display()}'
+                })
+            
+            # Verificar conflitos
+            conflitos = Evento.objects.filter(
+                veiculo=veiculo,
+                data_evento=data_evento_obj,
+                hora_inicio__lt=hora_fim_obj,
+                hora_fim__gt=hora_inicio_obj
+            )
+            
+            if evento_id:
+                conflitos = conflitos.exclude(id=evento_id)
+            
+            if conflitos.exists():
+                evento_conflito = conflitos.first()
+                return JsonResponse({
+                    'disponivel': False,
+                    'mensagem': f'Veículo já alocado no evento "{evento_conflito.nome_escola}" '
+                               f'em {evento_conflito.data_evento.strftime("%d/%m/%Y")} '
+                               f'das {evento_conflito.hora_inicio.strftime("%H:%M")} '
+                               f'às {evento_conflito.hora_fim.strftime("%H:%M")}'
+                })
+            
+            return JsonResponse({
+                'disponivel': True,
+                'mensagem': 'Veículo disponível'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'disponivel': False,
+                'mensagem': f'Erro ao verificar disponibilidade: {str(e)}'
+            }, status=400)
+    
+    return JsonResponse({'erro': 'Método não permitido'}, status=405)
+
+
+def api_voluntarios_disponiveis(request):
+    """API para listar voluntários disponíveis em determinado horário"""
+    if request.method == "GET":
+        data_evento = request.GET.get('data_evento')
+        hora_inicio = request.GET.get('hora_inicio')
+        hora_fim = request.GET.get('hora_fim')
+        evento_id = request.GET.get('evento_id', None)
+        
+        try:
+            data_evento_obj = datetime.strptime(data_evento, '%Y-%m-%d').date()
+            hora_inicio_obj = datetime.strptime(hora_inicio, '%H:%M').time()
+            hora_fim_obj = datetime.strptime(hora_fim, '%H:%M').time()
+            
+            # Buscar voluntários ativos
+            voluntarios = Voluntario.objects.filter(status='ativo', ativo=True)
+            
+            # Filtrar disponíveis
+            disponiveis = []
+            for vol in voluntarios:
+                conflitos = VoluntarioEvento.objects.filter(
+                    voluntario=vol,
+                    evento__data_evento=data_evento_obj,
+                    evento__hora_inicio__lt=hora_fim_obj,
+                    evento__hora_fim__gt=hora_inicio_obj
+                )
+                
+                if evento_id:
+                    conflitos = conflitos.exclude(evento_id=evento_id)
+                
+                if not conflitos.exists():
+                    disponiveis.append({
+                        'id': vol.id,
+                        'nome': vol.nome_completo,
+                        'agencia': vol.get_agencia_display(),
+                        'setor': vol.setor
+                    })
+            
+            return JsonResponse({
+                'total': len(disponiveis),
+                'voluntarios': disponiveis
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'erro': f'Erro ao buscar voluntários: {str(e)}'
+            }, status=400)
+    
+    return JsonResponse({'erro': 'Método não permitido'}, status=405)
+
+
+def api_estatisticas_evento(request, evento_id):
+    """API para retornar estatísticas de um evento específico"""
+    try:
+        evento = Evento.objects.get(id=evento_id)
+        voluntarios_evento = VoluntarioEvento.objects.filter(evento=evento)
+        
+        stats = {
+            'total_voluntarios': voluntarios_evento.count(),
+            'confirmados': voluntarios_evento.filter(presenca='confirmado').count(),
+            'presentes': voluntarios_evento.filter(presenca='presente').count(),
+            'ausentes': voluntarios_evento.filter(presenca='ausente').count(),
+            'cancelados': voluntarios_evento.filter(presenca='cancelado').count(),
+            'vai_no_veiculo': voluntarios_evento.filter(vai_no_veiculo=True).count(),
+            'capacidade_veiculo': evento.veiculo.capacidade if evento.veiculo else 0,
+            'veiculo_lotado': False
+        }
+        
+        if evento.veiculo:
+            stats['veiculo_lotado'] = stats['vai_no_veiculo'] >= evento.veiculo.capacidade
+        
+        # Voluntários por função
+        por_funcao = {}
+        for ve in voluntarios_evento:
+            funcao = ve.funcao_customizada if ve.funcao == 'outro' else ve.get_funcao_display()
+            por_funcao[funcao] = por_funcao.get(funcao, 0) + 1
+        
+        stats['por_funcao'] = por_funcao
+        
+        return JsonResponse(stats)
+        
+    except Evento.DoesNotExist:
+        return JsonResponse({'erro': 'Evento não encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=400)
+
+
+# ==================== FUNÇÕES AUXILIARES ====================
+
 def validar_cpf(cpf):
-    """
-    Valida se o CPF é válido usando o algoritmo oficial
-    """
-    # Remove caracteres não numéricos
+    """Valida se o CPF é válido usando o algoritmo oficial"""
     cpf = re.sub(r'[^\d]', '', cpf)
     
-    # Verifica se tem 11 dígitos
     if len(cpf) != 11:
         return False
     
-    # Verifica se todos os dígitos são iguais
     if cpf == cpf[0] * 11:
         return False
     
-    # Calcula o primeiro dígito verificador
+    # Primeiro dígito verificador
     soma = 0
     for i in range(9):
         soma += int(cpf[i]) * (10 - i)
     resto = soma % 11
     digito1 = 0 if resto < 2 else 11 - resto
     
-    # Verifica o primeiro dígito
     if int(cpf[9]) != digito1:
         return False
     
-    # Calcula o segundo dígito verificador
+    # Segundo dígito verificador
     soma = 0
     for i in range(10):
         soma += int(cpf[i]) * (11 - i)
     resto = soma % 11
     digito2 = 0 if resto < 2 else 11 - resto
     
-    # Verifica o segundo dígito
     return int(cpf[10]) == digito2
 
 
-# Funções auxiliares para APIs 
+# APIs JSON existentes
 def get_agencias_json(request):
-    """
-    Retorna as agências em formato JSON para AJAX
-    """
-    from django.http import JsonResponse
+    """Retorna as agências em formato JSON para AJAX"""
     return JsonResponse({'agencias': Voluntario.AGENCIAS_CHOICES})
 
 
 def get_tamanhos_json(request):
-    """
-    Retorna os tamanhos em formato JSON para AJAX
-    """
-    from django.http import JsonResponse
+    """Retorna os tamanhos em formato JSON para AJAX"""
     return JsonResponse({'tamanhos': Voluntario.TAMANHOS_CAMISETA})
