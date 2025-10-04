@@ -1,0 +1,165 @@
+<!-- Sidebar Administrativa -->
+<aside id="sidebar" class="fixed left-0 top-0 h-screen w-64 gradient-bg text-white shadow-2xl transform transition-transform duration-300 ease-in-out z-40">
+    <!-- Header do Sidebar -->
+    <div class="p-6 border-b border-white/20">
+        <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 secondary-bg rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-heart text-white text-xl"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold">VMM Admin</h2>
+                <p class="text-xs text-gray-200">Veja Um Mundo Melhor</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegação Principal -->
+    <nav class="p-4 space-y-2 overflow-y-auto" style="max-height: calc(100vh - 180px);">
+        <!-- Dashboard -->
+        <a href="{% url 'vmm:dashboard_admin' %}" 
+           class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if request.resolver_match.url_name == 'dashboard_admin' %}bg-white/20{% endif %}">
+            <i class="fa-solid fa-chart-line w-5"></i>
+            <span class="font-medium">Dashboard</span>
+        </a>
+
+        <!-- Divider -->
+        <div class="border-t border-white/20 my-4"></div>
+
+        <!-- Seção: Eventos -->
+        <div class="mb-2">
+            <p class="text-xs uppercase text-gray-300 px-4 mb-2 font-semibold tracking-wider">Eventos</p>
+            
+            <a href="{% url 'vmm:lista_eventos' %}" 
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if 'eventos' in request.path and 'calendario' not in request.path %}bg-white/20{% endif %}">
+                <i class="fa-solid fa-calendar-days w-5"></i>
+                <span class="font-medium">Lista de Eventos</span>
+            </a>
+            
+            <a href="{% url 'vmm:cadastro_evento' %}" 
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors">
+                <i class="fa-solid fa-plus-circle w-5"></i>
+                <span class="font-medium">Novo Evento</span>
+            </a>
+            
+            <a href="{% url 'vmm:calendario_eventos' %}" 
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if 'calendario' in request.path %}bg-white/20{% endif %}">
+                <i class="fa-solid fa-calendar w-5"></i>
+                <span class="font-medium">Calendário</span>
+            </a>
+        </div>
+
+        <!-- Divider -->
+        <div class="border-t border-white/20 my-4"></div>
+
+        <!-- Seção: Voluntários -->
+        <div class="mb-2">
+            <p class="text-xs uppercase text-gray-300 px-4 mb-2 font-semibold tracking-wider">Voluntários</p>
+            
+            <a href="{% url 'vmm:lista_voluntarios' %}" 
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if request.resolver_match.url_name == 'lista_voluntarios' %}bg-white/20{% endif %}">
+                <i class="fa-solid fa-users w-5"></i>
+                <span class="font-medium">Lista de Voluntários</span>
+            </a>
+            
+            <a href="{% url 'vmm:cadastro_voluntario' %}" 
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if request.resolver_match.url_name == 'cadastro_voluntario' %}bg-white/20{% endif %}">
+                <i class="fa-solid fa-user-plus w-5"></i>
+                <span class="font-medium">Formulário Público</span>
+            </a>
+        </div>
+
+        <!-- Divider -->
+        <div class="border-t border-white/20 my-4"></div>
+
+        <!-- Seção: Veículos -->
+        <div class="mb-2">
+            <p class="text-xs uppercase text-gray-300 px-4 mb-2 font-semibold tracking-wider">Recursos</p>
+            
+            <a href="{% url 'vmm:lista_veiculos' %}" 
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if request.resolver_match.url_name == 'lista_veiculos' %}bg-white/20{% endif %}">
+                <i class="fa-solid fa-car w-5"></i>
+                <span class="font-medium">Veículos</span>
+            </a>
+            
+            <a href="{% url 'vmm:cadastro_veiculo' %}" 
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors">
+                <i class="fa-solid fa-plus w-5"></i>
+                <span class="font-medium">Cadastrar Veículo</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Footer do Sidebar -->
+    <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-white/20 bg-primary-dark/50">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <i class="fa-solid fa-user text-sm"></i>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold">Admin</p>
+                    <p class="text-xs text-gray-300">Sicoob</p>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="lg:hidden">
+                <i class="fa-solid fa-times text-xl"></i>
+            </button>
+        </div>
+    </div>
+</aside>
+
+<!-- Overlay para mobile -->
+<div id="sidebar-overlay" 
+     class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden" 
+     onclick="toggleSidebar()"></div>
+
+<!-- Botão para abrir sidebar em mobile -->
+<button onclick="toggleSidebar()" 
+        class="fixed top-4 left-4 z-20 lg:hidden bg-primary-color text-white p-3 rounded-lg shadow-lg">
+    <i class="fa-solid fa-bars text-xl"></i>
+</button>
+
+<!-- Script para toggle do sidebar -->
+<script>
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    sidebar.classList.toggle('-translate-x-full');
+    overlay.classList.toggle('hidden');
+}
+
+// Fechar sidebar ao pressionar ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        
+        if (!sidebar.classList.contains('-translate-x-full')) {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        }
+    }
+});
+
+// Em mobile, iniciar com sidebar fechado
+if (window.innerWidth < 1024) {
+    document.getElementById('sidebar').classList.add('-translate-x-full');
+}
+</script>
+
+<style>
+/* Garantir que o sidebar inicia visível em desktop */
+@media (min-width: 1024px) {
+    #sidebar {
+        transform: translateX(0) !important;
+    }
+}
+
+/* Em mobile, iniciar escondido */
+@media (max-width: 1023px) {
+    #sidebar {
+        transform: translateX(-100%);
+    }
+}
+</style>

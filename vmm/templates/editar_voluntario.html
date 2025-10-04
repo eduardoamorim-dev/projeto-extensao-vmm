@@ -3,14 +3,6 @@
 {% block title %}Editar Voluntário | Veja Um Mundo Melhor - Admin{% endblock %}
 
 {% block content %}
-<style>
-    .primary-color { color: #20A193; }
-    .secondary-color { color: #C5D210; }
-    .primary-bg { background-color: #20A193; }
-    .secondary-bg { background-color: #C5D210; }
-    .gradient-bg { background: linear-gradient(135deg, #20A193 0%, #185048 100%); }
-    .accent-gradient { background: linear-gradient(135deg, #20A193 0%, #75B62F 100%); }
-</style>
 
 <!-- Header -->
 <header class="gradient-bg text-white shadow-xl">
@@ -29,7 +21,7 @@
             </div>
             <div class="flex items-center space-x-4">
                 <a href="{% url 'vmm:lista_voluntarios' %}" 
-                   class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors backdrop-blur-sm">
+                    class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors backdrop-blur-sm">
                     ← Voltar para Lista
                 </a>
             </div>
@@ -279,31 +271,9 @@
     </div>
 </main>
 
+{% block extra_js %}
 
-<!-- formatação de campos -->
 <script>
-function formatarCPF(input) {
-    let value = input.value.replace(/\D/g, '');
-    value = value.replace(/(\d{3})(\d)/, '$1.$2');
-    value = value.replace(/(\d{3})(\d)/, '$1.$2');
-    value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    input.value = value;
-}
-
-function formatarTelefone(input) {
-    let value = input.value.replace(/\D/g, '');
-    if (value.length <= 10) {
-        value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-    } else {
-        value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-    }
-    input.value = value;
-}
-</script>
-
-<!-- funcionalidade das agências -->
-<script>
-// Funcionalidade de busca de agências para edição
 function filtrarAgenciasEdit() {
     const input = document.getElementById('agencia-search-edit');
     const dropdown = document.getElementById('agencias-dropdown-edit');
@@ -341,7 +311,6 @@ function selecionarAgenciaEdit(codigo, nome) {
     dropdown.classList.add('hidden');
 }
 
-// Encontrar e definir a agência atual
 function definirAgenciaAtual() {
     const agenciaAtual = "{{ voluntario.agencia }}";
     const agenciaInput = document.getElementById('agencia-search-edit');
@@ -356,40 +325,25 @@ function definirAgenciaAtual() {
         }
     }
 }
-</script>
 
-<!--  inicialização e eventos -->
-<script>
-// Inicializar quando a página carregar
+// Inicialização
 document.addEventListener('DOMContentLoaded', function() {
-    // Definir o valor atual da agência
     definirAgenciaAtual();
     
     const agenciaInput = document.getElementById('agencia-search-edit');
     if (agenciaInput) {
-        agenciaInput.addEventListener('focus', function() {
-            filtrarAgenciasEdit(); // Mostra todas as opções
-        });
-        
+        agenciaInput.addEventListener('focus', filtrarAgenciasEdit);
         agenciaInput.addEventListener('blur', function() {
             setTimeout(function() {
                 const dropdown = document.getElementById('agencias-dropdown-edit');
-                if (dropdown) {
-                    dropdown.classList.add('hidden');
-                }
+                if (dropdown) dropdown.classList.add('hidden');
             }, 200);
         });
-        
-        // Também mostrar ao clicar
-        agenciaInput.addEventListener('click', function() {
-            filtrarAgenciasEdit();
-        });
+        agenciaInput.addEventListener('click', filtrarAgenciasEdit);
     }
 });
-</script>
 
-<!-- fechar dropdown ao clicar fora -->
-<script>
+// Fechar dropdown ao clicar fora
 document.addEventListener('click', function(event) {
     const input = document.getElementById('agencia-search-edit');
     const dropdown = document.getElementById('agencias-dropdown-edit');
@@ -399,4 +353,5 @@ document.addEventListener('click', function(event) {
     }
 });
 </script>
+{% endblock %}
 {% endblock %}

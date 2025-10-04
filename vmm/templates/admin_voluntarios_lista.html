@@ -3,71 +3,8 @@
 {% block title %}Lista de Voluntários | Veja Um Mundo Melhor - Admin{% endblock %}
 
 {% block content %}
-    <style>
-        .primary-color { color: #20A193; }
-        .secondary-color { color: #C5D210; }
-        .primary-bg { background-color: #20A193; }
-        .secondary-bg { background-color: #C5D210; }
-        .gradient-bg { background: linear-gradient(135deg, #20A193 0%, #185048 100%); }
-        .accent-gradient { background: linear-gradient(135deg, #20A193 0%, #75B62F 100%); }
-        
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #20A193;
-            border-radius: 3px;
-        }
-        
-        /* Print styles */
-        @media print {
-            .no-print { display: none !important; }
-            body { font-size: 12px; }
-            .table-container { overflow: visible !important; }
-        }
-        
-        /* Responsive table */
-        @media (max-width: 768px) {
-            .responsive-table {
-                display: block;
-                overflow-x: auto;
-                white-space: nowrap;
-            }
-        }
-    </style>
 
-    <!-- Header -->
-    <header class="gradient-bg text-white shadow-xl">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 secondary-bg rounded-full flex items-center justify-center">
-                            <span class="text-white font-bold text-lg"></span>
-                        </div>
-                        <div>
-                            <h1 class="text-2xl font-bold">Veja Um Mundo Melhor</h1>
-                            <p class="text-sm text-gray-200">Painel Administrativo</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4 no-print">
-                    <span class="text-sm text-gray-200">Olá, Admin</span>
-                    <a href="{% url 'vmm:cadastro_voluntario' %}" 
-                       class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors backdrop-blur-sm">
-                        Ver Formulário
-                    </a>
-                </div>
-            </div>
-        </div>
-    </header>
-
+{% include "partials/sidebar_admin.html" %}
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- status  -->
@@ -541,7 +478,8 @@
     </div>
 </div>
 
-<!-- JavaScript para o Modal -->
+{% block extra_js %}
+
 <script>
 // JavaScript para o Modal
 let voluntarioParaExcluir = {
@@ -618,34 +556,30 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
-</script>
 
-<script>
-    // Função para ver detalhes
-    function toggleDetalhes(id) {
-        const detalhes = document.getElementById('detalhes-' + id);
-        const btnText = document.getElementById('btn-text-' + id);
-        
-        if (detalhes.classList.contains('hidden')) {
-            detalhes.classList.remove('hidden');
-            btnText.innerHTML = '<i class="fa-solid fa-eye-slash mr-2"></i> Ocultar detalhes';
-        } else {
-            detalhes.classList.add('hidden');
-            btnText.innerHTML = '<i class="fa-solid fa-eye mr-2"></i> Ver detalhes';
-        }
+// Função para ver detalhes
+function toggleDetalhes(id) {
+    const detalhes = document.getElementById('detalhes-' + id);
+    const btnText = document.getElementById('btn-text-' + id);
+    
+    if (detalhes.classList.contains('hidden')) {
+        detalhes.classList.remove('hidden');
+        btnText.innerHTML = '<i class="fa-solid fa-eye-slash mr-2"></i> Ocultar detalhes';
+    } else {
+        detalhes.classList.add('hidden');
+        btnText.innerHTML = '<i class="fa-solid fa-eye mr-2"></i> Ver detalhes';
     }
+}
 
-    // Print optimization
-    window.addEventListener('beforeprint', function() {
-        document.body.classList.add('printing');
-    });
+// Print optimization
+window.addEventListener('beforeprint', function() {
+    document.body.classList.add('printing');
+});
 
-    window.addEventListener('afterprint', function() {
-        document.body.classList.remove('printing');
-    });
-</script>
+window.addEventListener('afterprint', function() {
+    document.body.classList.remove('printing');
+});
 
-<script>
 // Multi-select para agências
 function toggleAgenciasDropdown() {
     const dropdown = document.getElementById('agencias-multi-dropdown');
@@ -712,4 +646,5 @@ document.addEventListener('DOMContentLoaded', function() {
     updateDisplayText();
 });
 </script>
+{% endblock %}
 {% endblock %}

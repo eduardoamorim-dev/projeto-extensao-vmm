@@ -11,13 +11,94 @@
     rel="stylesheet" 
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- ADICIONAR: CSS customizado do Sicoob -->
+    <style>
+        :root {
+            --primary-color: #20A193;
+            --secondary-color: #C5D210;
+            --primary-dark: #185048;
+            --secondary-light: #75B62F;
+        }
+        
+        .primary-color { color: #20A193; }
+        .secondary-color { color: #C5D210; }
+        .primary-bg { background-color: #20A193; }
+        .secondary-bg { background-color: #C5D210; }
+        .gradient-bg { background: linear-gradient(135deg, #20A193 0%, #185048 100%); }
+        .accent-gradient { background: linear-gradient(135deg, #20A193 0%, #75B62F 100%); }
+        
+        /* Scrollbar customizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #20A193;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #185048;
+        }
+    </style>
+    
     <link rel="stylesheet" href="{% static 'vmm/css/style.css' %}">
+    
+    <!-- ADICIONAR: Block para CSS adicional por página -->
+    {% block extra_css %}{% endblock %}
 </head>
 <body class="bg-gray-100 font-sans">
+    <!-- ADICIONAR: Navbar condicional -->
+    {% block navbar %}
+        <!-- Não renderiza navbar por padrão - cada template decide -->
+    {% endblock %}
+    
     <!-- Conteúdo principal -->
     <main class="w-full min-h-screen">
         {% block content %}
         {% endblock %}
     </main>
+    
+    <!-- ADICIONAR: Footer condicional -->
+    {% block footer %}{% endblock %}
+    
+    <!-- ADICIONAR: Scripts globais -->
+    <script>
+        // Função global para formatar CPF
+        function formatarCPF(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            input.value = value;
+        }
+        
+        // Função global para formatar Telefone
+        function formatarTelefone(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length <= 10) {
+                value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+            } else {
+                value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            }
+            input.value = value;
+        }
+        
+        // Função para mostrar loading
+        function showLoading() {
+            // Implementar se necessário
+        }
+        
+        // Função para esconder loading
+        function hideLoading() {
+            // Implementar se necessário
+        }
+    </script>
+    
+    <!-- ADICIONAR: Block para scripts adicionais por página -->
+    {% block extra_js %}{% endblock %}
 </body>
 </html>
