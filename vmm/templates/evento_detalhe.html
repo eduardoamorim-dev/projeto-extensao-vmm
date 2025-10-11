@@ -1,0 +1,759 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ evento.nome_escola }} | Veja Um Mundo Melhor{% endblock %}
+
+{% block content %}
+{% include 'partials/sidebar_admin.html' %}
+
+<!-- Conteúdo Principal -->
+<div class="lg:ml-64 min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <h1 class="text-3xl font-bold primary-color">
+                            {{ evento.nome_escola }}
+                        </h1>
+                        {% if evento.status == 'planejamento' %}
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800">
+                                <i class="fa-solid fa-lightbulb mr-1"></i>{{ evento.get_status_display }}
+                            </span>
+                        {% elif evento.status == 'confirmado' %}
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                <i class="fa-solid fa-circle-check mr-1"></i>{{ evento.get_status_display }}
+                            </span>
+                        {% elif evento.status == 'em_andamento' %}
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                <i class="fa-solid fa-play mr-1"></i>{{ evento.get_status_display }}
+                            </span>
+                        {% elif evento.status == 'concluido' %}
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800">
+                                <i class="fa-solid fa-flag-checkered mr-1"></i>{{ evento.get_status_display }}
+                            </span>
+                        {% else %}
+                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                <i class="fa-solid fa-ban mr-1"></i>{{ evento.get_status_display }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <p class="text-gray-600">
+                        <i class="fa-solid fa-calendar mr-2"></i>{{ evento.data_evento|date:"d/m/Y" }}
+                        <i class="fa-solid fa-clock ml-4 mr-2"></i>{{ evento.hora_inicio|time:"H:i" }} - {{ evento.hora_fim|time:"H:i" }}
+                        <i class="fa-solid fa-location-dot ml-4 mr-2"></i>{{ evento.cidade }}
+                    </p>
+                </div>
+                <div class="mt-4 lg:mt-0 flex gap-3">
+                    <a href="{% url 'vmm:lista_eventos' %}" 
+                       class="bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors">
+                        <i class="fa-solid fa-arrow-left mr-2"></i>
+                        Voltar
+                    </a>
+                    {% if pode_editar %}
+                    <a href="{% url 'vmm:editar_evento' evento.id %}" 
+                       class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                        <i class="fa-solid fa-pen-to-square mr-2"></i>
+                        Editar
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Messages Section -->
+        {% if messages %}
+            <div class="mb-8">
+                {% for message in messages %}
+                    <div class="mb-4 p-4 rounded-xl {% if message.tags == 'success' %}bg-green-100 border-l-4 border-green-500 text-green-700{% elif message.tags == 'error' %}bg-red-100 border-l-4 border-red-500 text-red-700{% elif message.tags == 'warning' %}bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700{% else %}bg-blue-100 border-l-4 border-blue-500 text-blue-700{% endif %}">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                {% if message.tags == 'success' %}
+                                    <i class="fa-solid fa-circle-check text-xl"></i>
+                                {% elif message.tags == 'error' %}
+                                    <i class="fa-solid fa-circle-xmark text-xl"></i>
+                                {% elif message.tags == 'warning' %}
+                                    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-info-circle text-xl"></i>
+                                {% endif %}
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">{{ message }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Coluna Principal -->
+            <div class="lg:col-span-2 space-y-8">
+                
+                <!-- Informações do Evento -->
+                <div class="bg-white rounded-3xl shadow-xl p-8">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                        <i class="fa-solid fa-info-circle text-purple-600 mr-3"></i>
+                        Informações do Evento
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-sm font-semibold text-gray-500 uppercase mb-1">Responsável</p>
+                            <p class="text-base text-gray-900">{{ evento.responsavel_escola }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-500 uppercase mb-1">Telefone</p>
+                            <p class="text-base text-gray-900">{{ evento.telefone_responsavel }}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <p class="text-sm font-semibold text-gray-500 uppercase mb-1">Endereço</p>
+                            <p class="text-base text-gray-900">{{ evento.endereco }}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-500 uppercase mb-1">TVs</p>
+                            <p class="text-base text-gray-900">
+                                <i class="fa-solid fa-tv text-gray-400 mr-2"></i>{{ evento.qtd_tv }} unidade{{ evento.qtd_tv|pluralize }}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-500 uppercase mb-1">Computadores</p>
+                            <p class="text-base text-gray-900">
+                                <i class="fa-solid fa-computer text-gray-400 mr-2"></i>{{ evento.qtd_computador }} unidade{{ evento.qtd_computador|pluralize }}
+                            </p>
+                        </div>
+                        {% if evento.observacoes %}
+                        <div class="md:col-span-2">
+                            <p class="text-sm font-semibold text-gray-500 uppercase mb-1">Observações</p>
+                            <p class="text-base text-gray-700 bg-gray-50 p-4 rounded-lg">{{ evento.observacoes }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Gestão de Veículos -->
+                <div class="bg-white rounded-3xl shadow-xl p-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                            <i class="fa-solid fa-car text-blue-600 mr-3"></i>
+                            Veículos Alocados ({{ evento.eventoveiculo_set.count }})
+                        </h2>
+                        {% if pode_editar %}
+                        <button onclick="toggleModalAdicionarVeiculo()" 
+                                class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors">
+                            <i class="fa-solid fa-car-side mr-2"></i>
+                            Adicionar Veículo
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    {% if evento.eventoveiculo_set.all %}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for evento_veiculo in evento.eventoveiculo_set.all %}
+                                <div class="border-2 border-blue-200 rounded-xl p-4 bg-blue-50">
+                                    <div class="flex justify-between items-start mb-3">
+                                        <div>
+                                            <h3 class="text-lg font-bold text-blue-900">
+                                                {{ evento_veiculo.veiculo.nome }}
+                                            </h3>
+                                            <p class="text-sm text-blue-700">
+                                                {{ evento_veiculo.veiculo.placa }} - {{ evento_veiculo.veiculo.get_tipo_display }}
+                                            </p>
+                                        </div>
+                                        {% if pode_editar %}
+                                        <form method="POST" action="{% url 'vmm:remover_veiculo_evento' evento_veiculo.id %}" 
+                                              onsubmit="return confirm('Remover este veículo?')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="text-red-600 hover:text-red-800">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="bg-white rounded-lg p-3">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-xs text-gray-600">Ocupação</span>
+                                            <span class="text-sm font-bold text-gray-900">
+                                                {{ evento_veiculo.voluntarios_count }}/{{ evento_veiculo.veiculo.capacidade }}
+                                            </span>
+                                        </div>
+                                        {% comment %} <div class="bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div class="bg-blue-600 h-full" 
+                                                style="width: {{ evento_veiculo.ocupacao_percentual }}%;"></div>
+                                        </div> {% endcomment %}
+                                    </div>
+                                    
+                                    {% if evento_veiculo.motorista %}
+                                        <div class="mt-3 text-sm text-blue-800">
+                                            <i class="fa-solid fa-user mr-1"></i>
+                                            <strong>Motorista:</strong> {{ evento_veiculo.motorista.nome_completo }}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if evento_veiculo.observacoes %}
+                                        <div class="mt-2 text-xs text-blue-700">
+                                            {{ evento_veiculo.observacoes }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-8 text-gray-500">
+                            <i class="fa-solid fa-car-side text-3xl mb-3 block"></i>
+                            <p class="font-medium">Nenhum veículo alocado</p>
+                            <p class="text-sm">Adicione veículos para transporte</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Gestão de Voluntários -->
+                <div class="bg-white rounded-3xl shadow-xl p-8">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900 flex items-center">
+                            <i class="fa-solid fa-users text-purple-600 mr-3"></i>
+                            Voluntários Alocados ({{ total_voluntarios }})
+                        </h2>
+                        {% if pode_editar %}
+                        <button onclick="toggleModalAdicionar()" 
+                                class="accent-gradient text-white px-4 py-2 rounded-lg font-bold hover:opacity-90 transition-opacity">
+                            <i class="fa-solid fa-user-plus mr-2"></i>
+                            Adicionar
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    {% if voluntarios_evento %}
+                        <div class="space-y-3">
+                            {% for vol_evento in voluntarios_evento %}
+                                <div class="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-300 transition-colors">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-3 mb-2">
+                                                <h3 class="text-lg font-bold text-gray-900">
+                                                    {{ vol_evento.voluntario.nome_completo }}
+                                                </h3>
+                                                <span class="px-2 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
+                                                    {% if vol_evento.funcao == 'outro' %}
+                                                        {{ vol_evento.funcao_customizada }}
+                                                    {% else %}
+                                                        {{ vol_evento.get_funcao_display }}
+                                                    {% endif %}
+                                                </span>
+                                                {% if vol_evento.evento_veiculo %}
+                                                    <span class="px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                                                        <i class="fa-solid fa-car mr-1"></i>{{ vol_evento.evento_veiculo.veiculo.nome }}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="flex items-center gap-4 text-sm text-gray-600">
+                                                <span>
+                                                    <i class="fa-solid fa-building mr-1"></i>
+                                                    {{ vol_evento.voluntario.get_agencia_display }}
+                                                </span>
+                                                <span>
+                                                    <i class="fa-solid fa-briefcase mr-1"></i>
+                                                    {{ vol_evento.voluntario.setor }}
+                                                </span>
+                                                <span>
+                                                    <i class="fa-solid fa-phone mr-1"></i>
+                                                    {{ vol_evento.voluntario.telefone }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="flex items-center gap-2 ml-4">
+                                            <!-- Status de Presença -->
+                                            <form method="POST" action="{% url 'vmm:atualizar_presenca_voluntario' vol_evento.id %}" class="inline">
+                                                {% csrf_token %}
+                                                <select name="presenca" 
+                                                        onchange="this.form.submit()"
+                                                        class="text-xs px-2 py-1 border-2 rounded-lg {% if vol_evento.presenca == 'confirmado' %}border-blue-500 bg-blue-50 text-blue-800{% elif vol_evento.presenca == 'presente' %}border-green-500 bg-green-50 text-green-800{% elif vol_evento.presenca == 'ausente' %}border-red-500 bg-red-50 text-red-800{% elif vol_evento.presenca == 'cancelado' %}border-gray-500 bg-gray-50 text-gray-800{% else %}border-gray-300 bg-gray-50 text-gray-600{% endif %}">
+                                                    <option value="pendente" {% if vol_evento.presenca == 'pendente' %}selected{% endif %}>Pendente</option>
+                                                    <option value="confirmado" {% if vol_evento.presenca == 'confirmado' %}selected{% endif %}>✓ Confirmado</option>
+                                                    <option value="presente" {% if vol_evento.presenca == 'presente' %}selected{% endif %}>✓✓ Presente</option>
+                                                    <option value="ausente" {% if vol_evento.presenca == 'ausente' %}selected{% endif %}>✗ Ausente</option>
+                                                    <option value="cancelado" {% if vol_evento.presenca == 'cancelado' %}selected{% endif %}>⊘ Cancelado</option>
+                                                </select>
+                                            </form>
+                                            
+                                            <!-- Editar -->
+                                            {% if pode_editar %}
+                                            <button onclick="abrirModalEditar({{ vol_evento.id }}, '{{ vol_evento.funcao }}', '{{ vol_evento.funcao_customizada|escapejs }}', {% if vol_evento.evento_veiculo %}{{ vol_evento.evento_veiculo.id }}{% else %}null{% endif %})"
+                                                    class="text-blue-600 hover:text-blue-800 p-2"
+                                                    title="Editar">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </button>
+                                            
+                                            <!-- Remover -->
+                                            <form method="POST" action="{% url 'vmm:remover_voluntario_evento' vol_evento.id %}" 
+                                                  onsubmit="return confirm('Remover {{ vol_evento.voluntario.nome_completo }} do evento?')">
+                                                {% csrf_token %}
+                                                <button type="submit" 
+                                                        class="text-red-600 hover:text-red-800 p-2">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-12 text-gray-500">
+                            <i class="fa-solid fa-user-slash text-4xl mb-4 block"></i>
+                            <p class="text-lg font-medium">Nenhum voluntário alocado ainda</p>
+                            <p class="text-sm">Adicione voluntários para este evento</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                
+                <!-- Estatísticas -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Estatísticas</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-purple-700">Total</span>
+                                <span class="text-2xl font-bold text-purple-900">{{ total_voluntarios }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-blue-700">Confirmados</span>
+                                <span class="text-2xl font-bold text-blue-900">{{ confirmados }}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm font-medium text-green-700">Presentes</span>
+                                <span class="text-2xl font-bold text-green-900">{{ presentes }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ações Rápidas -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Ações Rápidas</h3>
+                    
+                    <div class="space-y-2">
+                        {% if pode_editar %}
+                        <a href="{% url 'vmm:editar_evento' evento.id %}" 
+                           class="block w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-center">
+                            <i class="fa-solid fa-pen-to-square mr-2"></i>
+                            Editar Evento
+                        </a>
+                        {% endif %}
+                        
+                        <button onclick="window.print()" 
+                                class="block w-full px-4 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors text-center">
+                            <i class="fa-solid fa-print mr-2"></i>
+                            Imprimir
+                        </button>
+                        
+                        <button onclick="toggleModalExcluir()" 
+                                class="block w-full px-4 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors text-center">
+                            <i class="fa-solid fa-trash mr-2"></i>
+                            Excluir Evento
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Informações do Sistema -->
+                <div class="bg-gray-50 rounded-xl p-6">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3">Informações do Sistema</h3>
+                    <div class="space-y-2 text-xs text-gray-600">
+                        <p><strong>ID:</strong> #{{ evento.id }}</p>
+                        <p><strong>Criado em:</strong> {{ evento.data_criacao|date:"d/m/Y H:i" }}</p>
+                        <p><strong>Criado por:</strong> {{ evento.criado_por }}</p>
+                        <p><strong>Última atualização:</strong> {{ evento.data_atualizacao|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal: Adicionar Voluntário -->
+<div id="modal-adicionar" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-2xl font-bold text-gray-900">Adicionar Voluntário ao Evento</h3>
+        </div>
+
+        
+        
+        <form method="POST" action="{% url 'vmm:adicionar_voluntario_evento' evento.id %}" class="p-6 space-y-6">
+            {% csrf_token %}
+            
+            <!-- Seleção de Voluntário -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Voluntário <span class="text-red-500">*</span>
+                </label>
+                <select name="voluntario_id" 
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors">
+                    <option value="">Selecione um voluntário</option>
+                    {% for voluntario in voluntarios_disponiveis %}
+                        <option value="{{ voluntario.id }}">
+                            {{ voluntario.nome_completo }} - {{ voluntario.get_agencia_display }} - {{ voluntario.setor }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small class="text-gray-500">Apenas voluntários disponíveis neste horário</small>
+            </div>
+            
+            <!-- Seleção de Função -->
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Função <span class="text-red-500">*</span>
+                </label>
+                <select name="funcao" 
+                        id="funcao-select"
+                        required
+                        onchange="toggleFuncaoCustomizada()"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors">
+                    <option value="">Selecione a função</option>
+                    {% for codigo, nome in funcoes %}
+                        <option value="{{ codigo }}">{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Função Customizada (aparece quando seleciona "Outro") -->
+            <div id="funcao-customizada-container" class="hidden">
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Especifique a Função
+                </label>
+                <input type="text" 
+                       name="funcao_customizada"
+                       id="funcao-customizada-input"
+                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                       placeholder="Digite a função">
+            </div>
+
+            <!-- Seleção de Veículo -->
+            {% if evento.eventoveiculo_set.exists %}
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Vai em qual veículo?
+                </label>
+                <select name="evento_veiculo" 
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors">
+                    <option value="">Não vai em veículo</option>
+                    {% for ev in evento.eventoveiculo_set.all %}
+                        <option value="{{ ev.id }}"
+                                {% if ev.voluntarios_count >= ev.veiculo.capacidade %}disabled{% endif %}>
+                            {{ ev.veiculo.nome }} - {{ ev.voluntarios_count }}/{{ ev.veiculo.capacidade }} ocupado
+                            {% if ev.voluntarios_count >= ev.veiculo.capacidade %}(LOTADO){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small class="text-gray-500 text-sm">Selecione em qual veículo o voluntário irá</small>
+            </div>
+            {% else %}
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p class="text-sm text-gray-600">
+                    <i class="fa-solid fa-info-circle mr-2"></i>
+                    Nenhum veículo alocado neste evento. Adicione veículos primeiro se necessário.
+                </p>
+            </div>
+            {% endif %}
+            
+            <!-- Botões -->
+            <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                <button type="button" 
+                        onclick="toggleModalAdicionar()"
+                        class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-6 py-2 accent-gradient text-white rounded-lg font-medium">
+                    Adicionar Voluntário
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Excluir Evento -->
+<div id="modal-excluir" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4">
+        <div class="p-6">
+            <h3 class="text-xl font-bold text-gray-900 mb-4">Confirmar Exclusão</h3>
+            <p class="text-gray-700 mb-4">
+                Tem certeza de que deseja excluir o evento <strong>{{ evento.nome_escola }}</strong>?
+            </p>
+            <p class="text-red-600 text-sm">
+                Esta ação não pode ser desfeita. Todos os {{ total_voluntarios }} voluntário{{ total_voluntarios|pluralize }} alocado{{ total_voluntarios|pluralize }} serão removidos.
+            </p>
+        </div>
+        <div class="p-6 border-t border-gray-200 flex justify-end space-x-3">
+            <button onclick="toggleModalExcluir()" 
+                    class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">
+                Cancelar
+            </button>
+            <form method="POST" action="{% url 'vmm:excluir_evento' evento.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" 
+                        class="px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">
+                    Excluir
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Adicionar Veículo -->
+<div id="modal-adicionar-veiculo" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-2xl font-bold text-gray-900">Adicionar Veículo ao Evento</h3>
+        </div>
+        
+        <form method="POST" action="{% url 'vmm:adicionar_veiculo_evento' evento.id %}" class="p-6 space-y-6">
+            {% csrf_token %}
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Veículo <span class="text-red-500">*</span>
+                </label>
+                <select name="veiculo_id" 
+                        required
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors">
+                    <option value="">Selecione um veículo</option>
+                    {% for veiculo in veiculos_disponiveis %}
+                        <option value="{{ veiculo.id }}">
+                            {{ veiculo.nome }} - {{ veiculo.placa }} ({{ veiculo.get_tipo_display }}) - Capacidade: {{ veiculo.capacidade }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Motorista (Opcional)
+                </label>
+                <select name="motorista_id" 
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors">
+                    <option value="">Nenhum motorista designado</option>
+                    {% for voluntario in voluntarios_evento %}
+                        <option value="{{ voluntario.voluntario.id }}">
+                            {{ voluntario.voluntario.nome_completo }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <small class="text-gray-500">Deve ser um voluntário já alocado no evento</small>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Observações
+                </label>
+                <textarea name="observacoes" 
+                          rows="3"
+                          class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                          placeholder="Informações sobre este veículo (rota, horário diferente, etc)"></textarea>
+            </div>
+            
+            <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                <button type="button" 
+                        onclick="toggleModalAdicionarVeiculo()"
+                        class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+                    Adicionar Veículo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Editar Voluntário -->
+<div id="modal-editar-voluntario" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4">
+        <div class="p-6 border-b border-gray-200">
+            <h3 class="text-2xl font-bold text-gray-900">Editar Voluntário no Evento</h3>
+        </div>
+        
+        <form method="POST" id="form-editar-voluntario" class="p-6 space-y-6">
+            {% csrf_token %}
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Função <span class="text-red-500">*</span>
+                </label>
+                <select name="funcao" 
+                        id="funcao-select-editar"
+                        required
+                        onchange="toggleFuncaoCustomizadaEditar()"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors">
+                    <option value="">Selecione a função</option>
+                    {% for codigo, nome in funcoes %}
+                        <option value="{{ codigo }}">{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div id="funcao-customizada-container-editar" class="hidden">
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Especifique a Função
+                </label>
+                <input type="text" 
+                       name="funcao_customizada"
+                       id="funcao-customizada-input-editar"
+                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                       placeholder="Digite a função">
+            </div>
+
+            {% if evento.eventoveiculo_set.exists %}
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-2">
+                    Vai em qual veículo?
+                </label>
+                <select name="evento_veiculo" 
+                        id="evento-veiculo-select-editar"
+                        class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors">
+                    <option value="">Não vai em veículo</option>
+                    {% for ev in evento.eventoveiculo_set.all %}
+                        <option value="{{ ev.id }}">
+                            {{ ev.veiculo.nome }} - {{ ev.voluntarios_count }}/{{ ev.veiculo.capacidade }} ocupado
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            
+            <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                <button type="button" 
+                        onclick="fecharModalEditar()"
+                        class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300">
+                    Cancelar
+                </button>
+                <button type="submit" 
+                        class="px-6 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700">
+                    Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Modal Adicionar Voluntário
+function toggleModalAdicionar() {
+    const modal = document.getElementById('modal-adicionar');
+    modal.classList.toggle('hidden');
+}
+
+// Modal Adicionar Veículo
+function toggleModalAdicionarVeiculo() {
+    const modal = document.getElementById('modal-adicionar-veiculo');
+    modal.classList.toggle('hidden');
+}
+
+// Modal Excluir Evento
+function toggleModalExcluir() {
+    const modal = document.getElementById('modal-excluir');
+    modal.classList.toggle('hidden');
+}
+
+// Função Customizada - Adicionar
+function toggleFuncaoCustomizada() {
+    const funcaoSelect = document.getElementById('funcao-select');
+    const container = document.getElementById('funcao-customizada-container');
+    const input = document.getElementById('funcao-customizada-input');
+    
+    if (funcaoSelect.value === 'outro') {
+        container.classList.remove('hidden');
+        input.required = true;
+    } else {
+        container.classList.add('hidden');
+        input.required = false;
+        input.value = '';
+    }
+}
+
+// Função Customizada - Editar
+function toggleFuncaoCustomizadaEditar() {
+    const funcaoSelect = document.getElementById('funcao-select-editar');
+    const container = document.getElementById('funcao-customizada-container-editar');
+    const input = document.getElementById('funcao-customizada-input-editar');
+    
+    if (funcaoSelect.value === 'outro') {
+        container.classList.remove('hidden');
+        input.required = true;
+    } else {
+        container.classList.add('hidden');
+        input.required = false;
+        input.value = '';
+    }
+}
+
+// Abrir Modal Editar Voluntário
+function abrirModalEditar(id, funcao, funcaoCustomizada, eventoVeiculoId) {
+    const form = document.getElementById('form-editar-voluntario');
+    const funcaoSelect = document.getElementById('funcao-select-editar');
+    const funcaoCustomInput = document.getElementById('funcao-customizada-input-editar');
+    const eventoVeiculoSelect = document.getElementById('evento-veiculo-select-editar');
+    
+    form.action = `/voluntario-evento/editar/${id}/`;
+    funcaoSelect.value = funcao;
+    funcaoCustomInput.value = funcaoCustomizada || '';
+    
+    toggleFuncaoCustomizadaEditar();
+    
+    if (eventoVeiculoSelect) {
+        eventoVeiculoSelect.value = eventoVeiculoId || '';
+    }
+    
+    document.getElementById('modal-editar-voluntario').classList.remove('hidden');
+}
+
+// Fechar Modal Editar
+function fecharModalEditar() {
+    document.getElementById('modal-editar-voluntario').classList.add('hidden');
+}
+
+// Fechar modais ao clicar fora
+document.addEventListener('click', function(event) {
+    const modals = ['modal-adicionar', 'modal-adicionar-veiculo', 'modal-excluir', 'modal-editar-voluntario'];
+    
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+});
+
+// Fechar modais com tecla ESC
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const modals = ['modal-adicionar', 'modal-adicionar-veiculo', 'modal-excluir', 'modal-editar-voluntario'];
+        modals.forEach(modalId => {
+            document.getElementById(modalId).classList.add('hidden');
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

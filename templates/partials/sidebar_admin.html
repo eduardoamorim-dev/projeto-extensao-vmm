@@ -30,19 +30,19 @@
             <p class="text-xs uppercase text-gray-300 px-4 mb-2 font-semibold tracking-wider">Eventos</p>
             
             <a href="{% url 'vmm:lista_eventos' %}" 
-               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if 'eventos' in request.path and 'calendario' not in request.path %}bg-white/20{% endif %}">
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if request.resolver_match.url_name == 'lista_eventos' %}bg-white/20{% endif %}">
                 <i class="fa-solid fa-calendar-days w-5"></i>
                 <span class="font-medium">Lista de Eventos</span>
             </a>
             
             <a href="{% url 'vmm:cadastro_evento' %}" 
-               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors">
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if request.resolver_match.url_name == 'cadastro_evento' %}bg-white/20{% endif %}">
                 <i class="fa-solid fa-plus-circle w-5"></i>
                 <span class="font-medium">Novo Evento</span>
             </a>
             
             <a href="{% url 'vmm:calendario_eventos' %}" 
-               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if 'calendario' in request.path %}bg-white/20{% endif %}">
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if request.resolver_match.url_name == 'calendario_eventos' %}bg-white/20{% endif %}">
                 <i class="fa-solid fa-calendar w-5"></i>
                 <span class="font-medium">Calendário</span>
             </a>
@@ -82,7 +82,7 @@
             </a>
             
             <a href="{% url 'vmm:cadastro_veiculo' %}" 
-               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors">
+               class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-white/10 transition-colors {% if request.resolver_match.url_name == 'cadastro_veiculo' %}bg-white/20{% endif %}">
                 <i class="fa-solid fa-plus w-5"></i>
                 <span class="font-medium">Cadastrar Veículo</span>
             </a>

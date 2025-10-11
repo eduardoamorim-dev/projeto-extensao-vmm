@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Evento | Veja Um Mundo Melhor{% endblock %}
+
+{% block content %}
+{% include 'partials/sidebar_admin.html' %}
+
+<!-- Conteúdo Principal -->
+<div class="lg:ml-64 min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold primary-color flex items-center">
+                        <i class="fa-solid fa-pen-to-square mr-3"></i>
+                        Editar Evento
+                    </h1>
+                    <p class="text-gray-600 mt-1">{{ evento.nome_escola }}</p>
+                </div>
+                <div class="mt-4 lg:mt-0 flex gap-3">
+                    <a href="{% url 'vmm:detalhe_evento' evento.id %}" 
+                        class="bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-colors">
+                        <i class="fa-solid fa-arrow-left mr-2"></i>
+                        Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Messages Section -->
+        {% if messages %}
+            <div class="mb-8">
+                {% for message in messages %}
+                    <div class="mb-4 p-4 rounded-xl {% if message.tags == 'success' %}bg-green-100 border-l-4 border-green-500 text-green-700{% elif message.tags == 'error' %}bg-red-100 border-l-4 border-red-500 text-red-700{% else %}bg-blue-100 border-l-4 border-blue-500 text-blue-700{% endif %}">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                {% if message.tags == 'success' %}
+                                    <i class="fa-solid fa-circle-check text-xl"></i>
+                                {% elif message.tags == 'error' %}
+                                    <i class="fa-solid fa-circle-xmark text-xl"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-info-circle text-xl"></i>
+                                {% endif %}
+                            </div>
+                            <div class="ml-3">
+                                <p class="font-medium">{{ message }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Alerta de Voluntários -->
+        {% if evento.voluntarioevento_set.count > 0 %}
+        <div class="bg-yellow-50 rounded-xl p-4 mb-8 border border-yellow-200">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="fa-solid fa-triangle-exclamation text-yellow-600 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-bold text-yellow-900">Atenção</h3>
+                    <p class="text-sm text-yellow-800 mt-1">
+                        Este evento possui <strong>{{ evento.voluntarioevento_set.count }} voluntário(s)</strong> alocado(s).
+                        Mudanças na data ou horário podem gerar conflitos com outros eventos.
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Formulário de Edição -->
+        <form method="POST" class="space-y-8">
+            {% csrf_token %}
+            
+            <!-- Seção 1: Informações da Escola -->
+            <div class="bg-white rounded-3xl shadow-xl p-8">
+                <div class="mb-6">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                            <i class="fa-solid fa-school text-blue-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Informações da Escola</h2>
+                            <p class="text-sm text-gray-600">Dados da instituição beneficiada</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Nome da Escola -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Nome da Escola <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" 
+                               name="nome_escola" 
+                               required
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                               placeholder="Ex: Escola Estadual Maria Silva"
+                               value="{{ evento.nome_escola }}">
+                    </div>
+
+                    <!-- Responsável e Telefone -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                Responsável <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" 
+                                   name="responsavel_escola" 
+                                   required
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                                   placeholder="Nome do diretor ou coordenador"
+                                   value="{{ evento.responsavel_escola }}">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                Telefone do Responsável <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" 
+                                   name="telefone_responsavel" 
+                                   required
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                                   placeholder="(00) 00000-0000"
+                                   value="{{ evento.telefone_responsavel }}"
+                                   maxlength="15">
+                        </div>
+                    </div>
+
+                    <!-- Cidade e Endereço -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                Cidade <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" 
+                                   name="cidade" 
+                                   required
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                                   placeholder="Ex: Patrocínio"
+                                   value="{{ evento.cidade }}">
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                Endereço Completo <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" 
+                                   name="endereco" 
+                                   required
+                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                                   placeholder="Rua, número, bairro, CEP"
+                                   value="{{ evento.endereco }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 2: Data e Horário -->
+            <div class="bg-white rounded-3xl shadow-xl p-8">
+                <div class="mb-6">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                            <i class="fa-solid fa-calendar-days text-green-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Data e Horário</h2>
+                            <p class="text-sm text-gray-600">Quando o evento acontecerá</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Data do Evento <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" 
+                               name="data_evento" 
+                               required
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                               value="{{ data_evento_formatted }}">
+                        <small class="text-gray-500 text-sm">Data atual: {{ evento.data_evento|date:"d/m/Y" }}</small>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Hora de Início <span class="text-red-500">*</span>
+                        </label>
+                        <input type="time" 
+                               name="hora_inicio" 
+                               required
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                               value="{{ hora_inicio_formatted }}">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Hora de Término <span class="text-red-500">*</span>
+                        </label>
+                        <input type="time" 
+                               name="hora_fim" 
+                               required
+                               class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                               value="{{ hora_fim_formatted }}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 3: Recursos e Logística -->
+            <div class="bg-white rounded-3xl shadow-xl p-8">
+                <div class="mb-6">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+                            <i class="fa-solid fa-boxes-stacked text-purple-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Recursos e Logística</h2>
+                            <p class="text-sm text-gray-600">Equipamentos e transporte necessários</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Equipamentos -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                Quantidade de TVs
+                            </label>
+                            <div class="relative">
+                                <input type="number" 
+                                       name="qtd_tv" 
+                                       min="0"
+                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                                       placeholder="0"
+                                       value="{{ evento.qtd_tv }}">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-tv text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">
+                                Quantidade de Computadores
+                            </label>
+                            <div class="relative">
+                                <input type="number" 
+                                       name="qtd_computador" 
+                                       min="0"
+                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors"
+                                       placeholder="0"
+                                       value="{{ evento.qtd_computador }}">
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-computer text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 4: Detalhes Adicionais -->
+            <div class="bg-white rounded-3xl shadow-xl p-8">
+                <div class="mb-6">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                            <i class="fa-solid fa-clipboard-list text-orange-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-900">Detalhes Adicionais</h2>
+                            <p class="text-sm text-gray-600">Informações complementares</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Status -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Status <span class="text-red-500">*</span>
+                        </label>
+                        <select name="status" 
+                                required
+                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors">
+                            {% for codigo, nome in status_choices %}
+                                <option value="{{ codigo }}" {% if evento.status == codigo %}selected{% endif %}>
+                                    {{ nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-gray-500 text-sm">Status atual: {{ evento.get_status_display }}</small>
+                    </div>
+
+                    <!-- Observações -->
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            Observações
+                        </label>
+                        <textarea name="observacoes" 
+                                  rows="4"
+                                  class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 transition-colors resize-none"
+                                  placeholder="Informações adicionais sobre o evento (opcional)">{{ evento.observacoes }}</textarea>
+                        <small class="text-gray-500 text-sm">Detalhes importantes sobre o evento</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informações do Sistema -->
+            <div class="bg-gray-50 rounded-xl p-6">
+                <h3 class="text-sm font-bold text-gray-700 mb-4 flex items-center">
+                    <i class="fa-solid fa-info-circle mr-2"></i>
+                    Informações do Sistema
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white rounded-lg p-3">
+                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">ID do Evento</p>
+                        <p class="text-sm font-medium text-gray-900">#{{ evento.id }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3">
+                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Criado em</p>
+                        <p class="text-sm font-medium text-gray-900">{{ evento.data_criacao|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3">
+                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Criado por</p>
+                        <p class="text-sm font-medium text-gray-900">{{ evento.criado_por }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3">
+                        <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Última Atualização</p>
+                        <p class="text-sm font-medium text-gray-900">{{ evento.data_atualizacao|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="flex justify-between items-center pt-6">
+                <a href="{% url 'vmm:detalhe_evento' evento.id %}" 
+                   class="px-8 py-3 bg-gray-500 text-white rounded-xl font-bold hover:bg-gray-600 transition-colors">
+                    <i class="fa-solid fa-times mr-2"></i>
+                    Cancelar
+                </a>
+                
+                <button type="submit" 
+                        class="px-8 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-colors">
+                    <i class="fa-solid fa-save mr-2"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+
+            <!-- Required Fields Note -->
+            <div class="text-center pt-4">
+                <small class="text-gray-500"><span class="text-red-500">*</span> Campos obrigatórios</small>
+            </div>
+        </form>
+    </main>
+</div>
+
+{% block extra_js %}
+<script>
+// Máscara de telefone
+const telefoneInput = document.querySelector('input[name="telefone_responsavel"]');
+telefoneInput.addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
+    
+    if (value.length > 6) {
+        value = `(${value.slice(0,2)}) ${value.slice(2,7)}-${value.slice(7)}`;
+    } else if (value.length > 2) {
+        value = `(${value.slice(0,2)}) ${value.slice(2)}`;
+    }
+    
+    e.target.value = value;
+});
+
+// Validação de horários
+document.querySelector('form').addEventListener('submit', function(e) {
+    const horaInicio = document.querySelector('input[name="hora_inicio"]').value;
+    const horaFim = document.querySelector('input[name="hora_fim"]').value;
+    
+    if (horaInicio && horaFim && horaInicio >= horaFim) {
+        e.preventDefault();
+        alert('A hora de término deve ser posterior à hora de início.');
+        return false;
+    }
+});
+
+// Verificar mudança de veículo
+const veiculoSelect = document.getElementById('veiculo-select');
+const veiculoAtual = "{{ evento.veiculo.id|default:'' }}";
+
+veiculoSelect.addEventListener('change', function() {
+    const alertDiv = document.getElementById('veiculo-alert');
+    const alertText = document.getElementById('veiculo-alert-text');
+    
+    if (this.value && this.value !== veiculoAtual) {
+        const capacidade = this.options[this.selectedIndex].dataset.capacidade;
+        alertText.textContent = `Você está alterando o veículo. Verifique se os voluntários que vão no veículo cabem na nova capacidade (${capacidade} lugares).`;
+        alertDiv.classList.remove('hidden');
+    } else {
+        alertDiv.classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

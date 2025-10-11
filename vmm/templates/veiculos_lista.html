@@ -83,14 +83,14 @@
                            name="busca" 
                            value="{{ busca }}"
                            placeholder="Nome do veículo ou placa..."
-                           class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors">
+                           class="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-green-500 transition-colors">
                 </div>
                 
                 <!-- Status -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Status:</label>
                     <select name="status" 
-                            class="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors">
+                            class="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-green-500 transition-colors">
                         <option value="">Todos</option>
                         {% for codigo, nome in status_choices %}
                             <option value="{{ codigo }}" {% if status_filtro == codigo %}selected{% endif %}>
@@ -104,7 +104,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Tipo:</label>
                     <select name="tipo" 
-                            class="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 transition-colors">
+                            class="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-green-500 transition-colors">
                         <option value="">Todos</option>
                         {% for codigo, nome in tipo_choices %}
                             <option value="{{ codigo }}" {% if tipo_filtro == codigo %}selected{% endif %}>
@@ -117,7 +117,7 @@
                 <!-- Botões -->
                 <div class="flex gap-2">
                     <button type="submit" 
-                            class="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors">
+                            class="px-4 py-2 accent-gradient text-white rounded-lg font-medium transition-colors">
                         <i class="fa-solid fa-filter mr-2"></i>
                         Filtrar
                     </button>
@@ -134,7 +134,7 @@
         <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+                    <thead class="primary-bg text-white sticky top-0 z-10">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">
                                 Veículo

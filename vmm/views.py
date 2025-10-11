@@ -12,15 +12,15 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 import re
 
-from .models import Voluntario, Evento, Veiculo, VoluntarioEvento
+from .models import Voluntario, Evento, Veiculo, VoluntarioEvento, EventoVeiculo
 
 
-# ==================== VIEWS DE VOLUNTÁRIOS (MANTIDAS) ====================
+# ==================== VIEWS DE VOLUNTÁRIOS  ====================
 
 @csrf_protect
 @require_http_methods(["GET", "POST"])
 def cadastro_voluntario(request):
-    """View para inscrição de voluntários - mantida do código original"""
+    """View para inscrição de voluntários"""
     if request.method == "POST":
         try:
             # Capturar dados
@@ -89,6 +89,7 @@ def cadastro_voluntario(request):
                     'form_data': request.POST,
                     'agencias': Voluntario.AGENCIAS_CHOICES,
                     'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
+                    'scroll_to_messages': True,
                 })
 
             # Criar voluntário
@@ -105,12 +106,22 @@ def cadastro_voluntario(request):
                 experiencia_anterior=experiencia_anterior if experiencia_anterior else None
             )
 
+            # Limpar todas as mensagens anteriores antes de adicionar sucesso
+            storage = messages.get_messages(request)
+            storage.used = True
+            
             messages.success(
                 request, 
                 f"Inscrição realizada com sucesso! Obrigado {nome_completo}, "
                 "sua candidatura foi registrada e será analisada pela equipe organizadora."
             )
-            return redirect('vmm:cadastro_voluntario') 
+            
+            # Renderizar com contexto limpo ao invés de redirecionar
+            return render(request, 'cadastro_voluntario.html', {
+                'agencias': Voluntario.AGENCIAS_CHOICES,
+                'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
+                'scroll_to_messages': True,
+            })
 
         except IntegrityError as e:
             error_message = str(e).lower()
@@ -128,6 +139,7 @@ def cadastro_voluntario(request):
                 'form_data': request.POST,
                 'agencias': Voluntario.AGENCIAS_CHOICES,
                 'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
+                'scroll_to_messages': True,
             })
             
         except Exception as e:
@@ -139,6 +151,7 @@ def cadastro_voluntario(request):
                 'form_data': request.POST,
                 'agencias': Voluntario.AGENCIAS_CHOICES,
                 'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
+                'scroll_to_messages': True,
             })
 
     return render(request, 'cadastro_voluntario.html', {
@@ -146,9 +159,8 @@ def cadastro_voluntario(request):
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
     })
 
-
 def lista_voluntarios(request):
-    """View para listar voluntários - mantida do código original"""
+    """View para listar voluntários"""
     todos_voluntarios = Voluntario.objects.all()
     voluntarios = todos_voluntarios.order_by('-data_cadastro')
     
@@ -234,7 +246,7 @@ def lista_voluntarios(request):
 
 @csrf_protect
 def editar_voluntario(request, voluntario_id):
-    """View para editar voluntário - mantida do código original"""
+    """View para editar voluntário"""
     voluntario = get_object_or_404(Voluntario, id=voluntario_id)
     
     if request.method == "POST":
@@ -343,6 +355,55 @@ def excluir_voluntario(request, voluntario_id):
         messages.error(request, 'Erro ao excluir voluntário.')
     
     return redirect('vmm:lista_voluntarios')
+
+@csrf_protect
+@require_http_methods(["POST"])
+def editar_voluntario_evento(request, voluntario_evento_id):
+    """Editar função e veículo do voluntário no evento"""
+    vol_evento = get_object_or_404(VoluntarioEvento, id=voluntario_evento_id)
+    
+    try:
+        funcao = request.POST.get('funcao')
+        funcao_customizada = request.POST.get('funcao_customizada', '').strip()
+        evento_veiculo_id = request.POST.get('evento_veiculo')
+        
+        if not funcao:
+            messages.error(request, 'Função é obrigatória.')
+            return redirect('vmm:detalhe_evento', evento_id=vol_evento.evento.id)
+        
+        vol_evento.funcao = funcao
+        vol_evento.funcao_customizada = funcao_customizada if funcao == 'outro' else ''
+        
+        # Atualizar veículo
+        if evento_veiculo_id:
+            evento_veiculo = get_object_or_404(EventoVeiculo, id=evento_veiculo_id, evento=vol_evento.evento)
+            
+            # Verificar capacidade
+            ocupacao_atual = VoluntarioEvento.objects.filter(
+                evento=vol_evento.evento,
+                evento_veiculo=evento_veiculo
+            ).exclude(pk=vol_evento.pk).count()
+            
+            if ocupacao_atual >= evento_veiculo.veiculo.capacidade:
+                messages.error(
+                    request, 
+                    f'O veículo {evento_veiculo.veiculo.nome} já está na capacidade máxima.'
+                )
+                return redirect('vmm:detalhe_evento', evento_id=vol_evento.evento.id)
+            
+            vol_evento.vai_no_veiculo = True
+            vol_evento.evento_veiculo = evento_veiculo
+        else:
+            vol_evento.vai_no_veiculo = False
+            vol_evento.evento_veiculo = None
+        
+        vol_evento.save()
+        messages.success(request, f'Dados de {vol_evento.voluntario.nome_completo} atualizados!')
+        
+    except Exception as e:
+        messages.error(request, f'Erro ao atualizar: {str(e)}')
+    
+    return redirect('vmm:detalhe_evento', evento_id=vol_evento.evento.id)
 
 
 # ==================== VIEWS DE VEÍCULOS ====================
@@ -527,34 +588,119 @@ def excluir_veiculo(request, veiculo_id):
     
     try:
         # Verificar se há eventos futuros com este veículo
-        eventos_futuros = Evento.objects.filter(
-            veiculo=veiculo,
-            data_evento__gte=timezone.now().date()
-        ).count()
-        
-        if eventos_futuros > 0:
-            messages.warning(
-                request, 
-                f'O veículo {nome} possui {eventos_futuros} evento(s) futuro(s). '
-                'Ele foi desativado mas não excluído.'
-            )
-            veiculo.ativo = False
-            veiculo.status = 'indisponivel'
-            veiculo.save()
-        else:
-            veiculo.delete()
-            messages.success(request, f'Veículo {nome} excluído com sucesso!')
+        veiculo.delete()
+        messages.success(request, f'Veículo {nome} excluído com sucesso!')
     except Exception as e:
         messages.error(request, 'Erro ao excluir veículo.')
     
     return redirect('vmm:lista_veiculos')
+
+@csrf_protect
+@require_http_methods(["POST"])
+def adicionar_veiculo_evento(request, evento_id):
+    """Adicionar veículo a um evento"""
+    evento = get_object_or_404(Evento, id=evento_id)
+    
+    try:
+        with transaction.atomic():
+            veiculo_id = request.POST.get('veiculo_id')
+            motorista_id = request.POST.get('motorista_id')
+            observacoes = request.POST.get('observacoes', '').strip()
+            
+            if not veiculo_id:
+                messages.error(request, 'Veículo é obrigatório.')
+                return redirect('vmm:detalhe_evento', evento_id=evento.id)
+            
+            veiculo = get_object_or_404(Veiculo, id=veiculo_id, ativo=True)
+            
+            if EventoVeiculo.objects.filter(evento=evento, veiculo=veiculo).exists():
+                messages.warning(request, f'{veiculo.nome} já está neste evento.')
+                return redirect('vmm:detalhe_evento', evento_id=evento.id)
+            
+            conflito = EventoVeiculo.objects.filter(
+                veiculo=veiculo,
+                evento__data_evento=evento.data_evento,
+                evento__hora_inicio__lt=evento.hora_fim,
+                evento__hora_fim__gt=evento.hora_inicio
+            ).exclude(evento=evento)
+            
+            if conflito.exists():
+                messages.error(request, f'O veículo {veiculo.nome} já está alocado em outro evento neste horário.')
+                return redirect('vmm:detalhe_evento', evento_id=evento.id)
+            
+            motorista = None
+            if motorista_id:
+                motorista = get_object_or_404(Voluntario, id=motorista_id)
+                vol_evento = VoluntarioEvento.objects.filter(
+                    evento=evento, 
+                    voluntario=motorista
+                ).first()
+                
+                if not vol_evento:
+                    messages.error(request, 'O motorista deve ser um voluntário alocado neste evento.')
+                    return redirect('vmm:detalhe_evento', evento_id=evento.id)
+            
+            evento_veiculo = EventoVeiculo.objects.create(
+                evento=evento,
+                veiculo=veiculo,
+                motorista=motorista,
+                observacoes=observacoes
+            )
+            
+            if motorista:
+                vol_evento = VoluntarioEvento.objects.get(evento=evento, voluntario=motorista)
+                vol_evento.vai_no_veiculo = True
+                vol_evento.evento_veiculo = evento_veiculo
+                vol_evento.save()
+            
+            messages.success(request, f'Veículo {veiculo.nome} adicionado ao evento!')
+        
+    except Exception as e:
+        messages.error(request, f'Erro ao adicionar veículo: {str(e)}')
+    
+    return redirect('vmm:detalhe_evento', evento_id=evento.id)
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def remover_veiculo_evento(request, evento_veiculo_id):
+    """Remover veículo de um evento"""
+    evento_veiculo = get_object_or_404(EventoVeiculo, id=evento_veiculo_id)
+    evento_id = evento_veiculo.evento.id
+    nome_veiculo = evento_veiculo.veiculo.nome
+    
+    try:
+        # Verificar se há voluntários alocados neste veículo
+        voluntarios_no_veiculo = VoluntarioEvento.objects.filter(
+            evento=evento_veiculo.evento,
+            evento_veiculo=evento_veiculo
+        ).count()
+        
+        if voluntarios_no_veiculo > 0:
+            messages.warning(
+                request,
+                f'O veículo {nome_veiculo} possui {voluntarios_no_veiculo} voluntário(s) alocado(s). '
+                'Eles foram desvinculados do veículo.'
+            )
+            # Desvincular voluntários
+            VoluntarioEvento.objects.filter(
+                evento=evento_veiculo.evento,
+                evento_veiculo=evento_veiculo
+            ).update(evento_veiculo=None, vai_no_veiculo=False)
+        
+        evento_veiculo.delete()
+        messages.success(request, f'Veículo {nome_veiculo} removido do evento.')
+    except Exception as e:
+        messages.error(request, 'Erro ao remover veículo do evento.')
+    
+    return redirect('vmm:detalhe_evento', evento_id=evento_id)
 
 
 # ==================== VIEWS DE EVENTOS ====================
 
 def lista_eventos(request):
     """Lista todos os eventos com filtros"""
-    eventos = Evento.objects.select_related('veiculo').prefetch_related(
+    eventos = Evento.objects.prefetch_related(
         Prefetch(
             'voluntarioevento_set',
             queryset=VoluntarioEvento.objects.select_related('voluntario')
@@ -648,7 +794,6 @@ def cadastro_evento(request):
                 
                 qtd_tv = request.POST.get('qtd_tv', 0)
                 qtd_computador = request.POST.get('qtd_computador', 0)
-                veiculo_id = request.POST.get('veiculo', '')
                 status = request.POST.get('status', 'planejamento')
                 observacoes = request.POST.get('observacoes', '').strip()
                 
@@ -694,18 +839,6 @@ def cadastro_evento(request):
                     if hora_inicio >= hora_fim:
                         errors.append("A hora de término deve ser posterior à hora de início.")
                 
-                # Validar veículo
-                veiculo = None
-                if veiculo_id:
-                    try:
-                        veiculo = Veiculo.objects.get(id=veiculo_id, ativo=True)
-                        # Verificar disponibilidade do veículo
-                        if data_evento and hora_inicio and hora_fim:
-                            if not veiculo.verificar_disponibilidade(data_evento, hora_inicio, hora_fim):
-                                errors.append(f'O veículo {veiculo.nome} já está alocado neste horário.')
-                    except Veiculo.DoesNotExist:
-                        errors.append("Veículo selecionado não existe.")
-                
                 # Validar quantidades
                 try:
                     qtd_tv = int(qtd_tv)
@@ -742,7 +875,6 @@ def cadastro_evento(request):
                     hora_fim=hora_fim,
                     qtd_tv=qtd_tv,
                     qtd_computador=qtd_computador,
-                    veiculo=veiculo,
                     status=status,
                     observacoes=observacoes,
                     criado_por=request.user.username if request.user.is_authenticated else 'Sistema'
@@ -755,7 +887,6 @@ def cadastro_evento(request):
             messages.error(request, f'Erro ao cadastrar evento: {str(e)}')
             return render(request, 'evento_cadastro.html', {
                 'form_data': request.POST,
-                'veiculos': Veiculo.objects.filter(status='disponivel', ativo=True),
                 'status_choices': Evento.STATUS_EVENTO,
             })
     
@@ -768,16 +899,23 @@ def cadastro_evento(request):
 def detalhe_evento(request, evento_id):
     """Visualizar detalhes completos do evento"""
     evento = get_object_or_404(
-        Evento.objects.select_related('veiculo').prefetch_related(
+        Evento.objects.prefetch_related(
             Prefetch(
                 'voluntarioevento_set',
-                queryset=VoluntarioEvento.objects.select_related('voluntario').order_by('funcao')
+                queryset=VoluntarioEvento.objects.select_related(
+                    'voluntario', 
+                    'evento_veiculo__veiculo'
+                ).order_by('funcao')
+            ),
+            Prefetch(
+                'eventoveiculo_set',
+                queryset=EventoVeiculo.objects.select_related('veiculo', 'motorista')
             )
         ),
         id=evento_id
     )
     
-    # Voluntários do evento agrupados por função
+    # Voluntários do evento
     voluntarios_evento = evento.voluntarioevento_set.all()
     
     # Voluntários disponíveis (não alocados neste horário)
@@ -787,36 +925,44 @@ def detalhe_evento(request, evento_id):
         id__in=voluntarios_evento.values_list('voluntario_id', flat=True)
     )
     
-    # Filtrar apenas os que realmente estão disponíveis no horário
+    # Filtrar disponíveis no horário
     voluntarios_disponiveis_filtrados = []
     for vol in voluntarios_disponiveis:
         if vol.verificar_disponibilidade(evento.data_evento, evento.hora_inicio, evento.hora_fim):
             voluntarios_disponiveis_filtrados.append(vol)
     
-    # Estatísticas do evento
+    # Veículos disponíveis (não alocados neste evento e horário)
+    veiculos_disponiveis = Veiculo.objects.filter(
+        status='disponivel',
+        ativo=True
+    ).exclude(
+        id__in=evento.eventoveiculo_set.values_list('veiculo_id', flat=True)
+    )
+    
+    # Filtrar disponíveis no horário
+    veiculos_disponiveis_filtrados = []
+    for veiculo in veiculos_disponiveis:
+        if veiculo.verificar_disponibilidade(evento.data_evento, evento.hora_inicio, evento.hora_fim):
+            veiculos_disponiveis_filtrados.append(veiculo)
+    
+    # Estatísticas
     total_voluntarios = voluntarios_evento.count()
     confirmados = voluntarios_evento.filter(presenca='confirmado').count()
     presentes = voluntarios_evento.filter(presenca='presente').count()
-    
-    # Ocupação do veículo
-    ocupacao_veiculo = 0
-    if evento.veiculo:
-        ocupacao_veiculo = voluntarios_evento.filter(vai_no_veiculo=True).count()
     
     context = {
         'evento': evento,
         'voluntarios_evento': voluntarios_evento,
         'voluntarios_disponiveis': voluntarios_disponiveis_filtrados,
+        'veiculos_disponiveis': veiculos_disponiveis_filtrados,
         'funcoes': VoluntarioEvento.FUNCOES,
         'total_voluntarios': total_voluntarios,
         'confirmados': confirmados,
         'presentes': presentes,
-        'ocupacao_veiculo': ocupacao_veiculo,
         'pode_editar': evento.status in ['planejamento', 'confirmado'],
     }
     
     return render(request, 'evento_detalhe.html', context)
-
 
 @csrf_protect
 def editar_evento(request, evento_id):
@@ -838,8 +984,6 @@ def editar_evento(request, evento_id):
                 
                 evento.qtd_tv = int(request.POST.get('qtd_tv', 0))
                 evento.qtd_computador = int(request.POST.get('qtd_computador', 0))
-                
-                veiculo_id = request.POST.get('veiculo', '')
                 evento.status = request.POST.get('status', '')
                 evento.observacoes = request.POST.get('observacoes', '').strip()
                 
@@ -861,27 +1005,6 @@ def editar_evento(request, evento_id):
                     evento.hora_fim = datetime.strptime(hora_fim_str, '%H:%M').time()
                 except ValueError:
                     errors.append("Hora de término inválida.")
-                
-                # Validar veículo
-                if veiculo_id:
-                    try:
-                        veiculo = Veiculo.objects.get(id=veiculo_id, ativo=True)
-                        # Verificar disponibilidade excluindo o evento atual
-                        conflito = Evento.objects.filter(
-                            veiculo=veiculo,
-                            data_evento=evento.data_evento,
-                            hora_inicio__lt=evento.hora_fim,
-                            hora_fim__gt=evento.hora_inicio
-                        ).exclude(pk=evento.pk)
-                        
-                        if conflito.exists():
-                            errors.append(f'O veículo {veiculo.nome} já está alocado neste horário.')
-                        else:
-                            evento.veiculo = veiculo
-                    except Veiculo.DoesNotExist:
-                        errors.append("Veículo selecionado não existe.")
-                else:
-                    evento.veiculo = None
                 
                 if errors:
                     for error in errors:
@@ -909,7 +1032,6 @@ def editar_evento(request, evento_id):
         'data_evento_formatted': data_evento_formatted,
         'hora_inicio_formatted': hora_inicio_formatted,
         'hora_fim_formatted': hora_fim_formatted,
-        'veiculos': Veiculo.objects.filter(status='disponivel', ativo=True),
         'status_choices': Evento.STATUS_EVENTO,
     }
     
@@ -954,7 +1076,7 @@ def adicionar_voluntario_evento(request, evento_id):
         voluntario_id = request.POST.get('voluntario_id')
         funcao = request.POST.get('funcao')
         funcao_customizada = request.POST.get('funcao_customizada', '').strip()
-        vai_no_veiculo = request.POST.get('vai_no_veiculo') == 'on'
+        evento_veiculo_id = request.POST.get('evento_veiculo')  # MUDOU: novo campo
         
         if not voluntario_id or not funcao:
             messages.error(request, 'Voluntário e função são obrigatórios.')
@@ -967,13 +1089,35 @@ def adicionar_voluntario_evento(request, evento_id):
             messages.warning(request, f'{voluntario.nome_completo} já está neste evento.')
             return redirect('vmm:detalhe_evento', evento_id=evento.id)
         
+        # Verificar veículo
+        evento_veiculo = None
+        vai_no_veiculo = False
+        if evento_veiculo_id:
+            evento_veiculo = get_object_or_404(EventoVeiculo, id=evento_veiculo_id, evento=evento)
+            vai_no_veiculo = True
+            
+            # Verificar capacidade
+            ocupacao_atual = VoluntarioEvento.objects.filter(
+                evento=evento,
+                evento_veiculo=evento_veiculo
+            ).count()
+            
+            if ocupacao_atual >= evento_veiculo.veiculo.capacidade:
+                messages.error(
+                    request, 
+                    f'O veículo {evento_veiculo.veiculo.nome} já está na capacidade máxima '
+                    f'({evento_veiculo.veiculo.capacidade} lugares).'
+                )
+                return redirect('vmm:detalhe_evento', evento_id=evento.id)
+        
         # Criar vínculo
         vol_evento = VoluntarioEvento(
             evento=evento,
             voluntario=voluntario,
             funcao=funcao,
             funcao_customizada=funcao_customizada if funcao == 'outro' else '',
-            vai_no_veiculo=vai_no_veiculo
+            vai_no_veiculo=vai_no_veiculo,
+            evento_veiculo=evento_veiculo
         )
         
         # Validar (inclui verificação de conflitos)
@@ -989,8 +1133,6 @@ def adicionar_voluntario_evento(request, evento_id):
         messages.error(request, f'Erro ao adicionar voluntário: {str(e)}')
     
     return redirect('vmm:detalhe_evento', evento_id=evento.id)
-
-
 @csrf_protect
 @require_http_methods(["POST"])
 def remover_voluntario_evento(request, voluntario_evento_id):
@@ -1047,7 +1189,7 @@ def calendario_eventos(request):
     eventos = Evento.objects.filter(
         data_evento__year=ano,
         data_evento__month=mes
-    ).select_related('veiculo').prefetch_related('voluntarioevento_set')
+    ).prefetch_related('voluntarioevento_set')
     
     context = {
         'eventos': eventos,
@@ -1066,44 +1208,36 @@ def dashboard_admin(request):
     """Dashboard principal com visão geral do sistema"""
     hoje = timezone.now().date()
     
-    # Estatísticas gerais
     total_voluntarios = Voluntario.objects.filter(ativo=True).count()
     voluntarios_ativos = Voluntario.objects.filter(status='ativo', ativo=True).count()
     total_eventos = Evento.objects.count()
     total_veiculos = Veiculo.objects.filter(ativo=True).count()
     
-    # Eventos próximos (próximos 30 dias)
     eventos_proximos = Evento.objects.filter(
         data_evento__gte=hoje,
         data_evento__lte=hoje + timedelta(days=30),
         status__in=['planejamento', 'confirmado']
-    ).select_related('veiculo').order_by('data_evento', 'hora_inicio')[:5]
+    ).order_by('data_evento', 'hora_inicio')[:5]
     
-    # Eventos do mês atual
     eventos_mes = Evento.objects.filter(
         data_evento__year=hoje.year,
         data_evento__month=hoje.month
     ).count()
     
-    # Voluntários mais ativos (com mais participações)
     voluntarios_mais_ativos = Voluntario.objects.annotate(
         num_eventos=Count('voluntarioevento')
     ).filter(num_eventos__gt=0).order_by('-num_eventos')[:5]
     
-    # Veículos mais utilizados
     veiculos_mais_usados = Veiculo.objects.annotate(
-        num_eventos=Count('evento')
+        num_eventos=Count('eventoveiculo')
     ).filter(num_eventos__gt=0).order_by('-num_eventos')[:5]
     
-    # Eventos por status
     eventos_por_status = Evento.objects.values('status').annotate(
         total=Count('id')
     )
     
-    # Alertas (eventos sem voluntários suficientes, conflitos, etc)
     alertas = []
     
-    # Eventos futuros sem voluntários
     eventos_sem_voluntarios = Evento.objects.filter(
         data_evento__gte=hoje,
         status__in=['planejamento', 'confirmado']
@@ -1117,7 +1251,6 @@ def dashboard_admin(request):
             'mensagem': f'{eventos_sem_voluntarios.count()} evento(s) futuro(s) sem voluntários alocados'
         })
     
-    # Veículos em manutenção
     veiculos_manutencao = Veiculo.objects.filter(status='manutencao', ativo=True).count()
     if veiculos_manutencao > 0:
         alertas.append({
@@ -1139,7 +1272,6 @@ def dashboard_admin(request):
     }
     
     return render(request, 'dashboard_admin.html', context)
-
 
 # ==================== APIs JSON para AJAX ====================
 
@@ -1209,26 +1341,24 @@ def api_verificar_disponibilidade_veiculo(request):
             hora_inicio_obj = datetime.strptime(hora_inicio, '%H:%M').time()
             hora_fim_obj = datetime.strptime(hora_fim, '%H:%M').time()
             
-            # Verificar status do veículo
             if veiculo.status != 'disponivel':
                 return JsonResponse({
                     'disponivel': False,
                     'mensagem': f'Veículo está {veiculo.get_status_display()}'
                 })
             
-            # Verificar conflitos
-            conflitos = Evento.objects.filter(
+            conflitos = EventoVeiculo.objects.filter(
                 veiculo=veiculo,
-                data_evento=data_evento_obj,
-                hora_inicio__lt=hora_fim_obj,
-                hora_fim__gt=hora_inicio_obj
+                evento__data_evento=data_evento_obj,
+                evento__hora_inicio__lt=hora_fim_obj,
+                evento__hora_fim__gt=hora_inicio_obj
             )
             
             if evento_id:
-                conflitos = conflitos.exclude(id=evento_id)
+                conflitos = conflitos.exclude(evento_id=evento_id)
             
             if conflitos.exists():
-                evento_conflito = conflitos.first()
+                evento_conflito = conflitos.first().evento
                 return JsonResponse({
                     'disponivel': False,
                     'mensagem': f'Veículo já alocado no evento "{evento_conflito.nome_escola}" '
@@ -1249,7 +1379,6 @@ def api_verificar_disponibilidade_veiculo(request):
             }, status=400)
     
     return JsonResponse({'erro': 'Método não permitido'}, status=405)
-
 
 def api_voluntarios_disponiveis(request):
     """API para listar voluntários disponíveis em determinado horário"""
@@ -1313,13 +1442,8 @@ def api_estatisticas_evento(request, evento_id):
             'presentes': voluntarios_evento.filter(presenca='presente').count(),
             'ausentes': voluntarios_evento.filter(presenca='ausente').count(),
             'cancelados': voluntarios_evento.filter(presenca='cancelado').count(),
-            'vai_no_veiculo': voluntarios_evento.filter(vai_no_veiculo=True).count(),
-            'capacidade_veiculo': evento.veiculo.capacidade if evento.veiculo else 0,
-            'veiculo_lotado': False
         }
-        
-        if evento.veiculo:
-            stats['veiculo_lotado'] = stats['vai_no_veiculo'] >= evento.veiculo.capacidade
+
         
         # Voluntários por função
         por_funcao = {}

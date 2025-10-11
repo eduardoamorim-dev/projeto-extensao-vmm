@@ -8,7 +8,7 @@ urlpatterns = [
     # Dashboard
     path('dashboard/', views.dashboard_admin, name='dashboard_admin'),
     
-    # Voluntários (rotas existentes mantidas)
+    # Voluntários 
     path('', views.cadastro_voluntario, name='cadastro_voluntario'),
     path('lista/', views.lista_voluntarios, name='lista_voluntarios'),
     path('editar/<int:voluntario_id>/', views.editar_voluntario, name='editar_voluntario'),
@@ -19,6 +19,8 @@ urlpatterns = [
     path('veiculos/cadastro/', views.cadastro_veiculo, name='cadastro_veiculo'),
     path('veiculos/editar/<int:veiculo_id>/', views.editar_veiculo, name='editar_veiculo'),
     path('veiculos/excluir/<int:veiculo_id>/', views.excluir_veiculo, name='excluir_veiculo'),
+
+
     
     # Eventos
     path('eventos/', views.lista_eventos, name='lista_eventos'),
@@ -27,6 +29,9 @@ urlpatterns = [
     path('eventos/editar/<int:evento_id>/', views.editar_evento, name='editar_evento'),
     path('eventos/excluir/<int:evento_id>/', views.excluir_evento, name='excluir_evento'),
     path('eventos/calendario/', views.calendario_eventos, name='calendario_eventos'),
+    path('eventos/<int:evento_id>/adicionar-veiculo/', views.adicionar_veiculo_evento, name='adicionar_veiculo_evento'),
+    path('eventos/veiculo/<int:evento_veiculo_id>/remover/', views.remover_veiculo_evento, name='remover_veiculo_evento'),
+    path('voluntario-evento/editar/<int:voluntario_evento_id>/', views.editar_voluntario_evento, name='editar_voluntario_evento'),
     
     # Voluntários em Eventos
     path('eventos/<int:evento_id>/adicionar-voluntario/', views.adicionar_voluntario_evento, name='adicionar_voluntario_evento'),
@@ -40,4 +45,6 @@ urlpatterns = [
     path('api/evento/<int:evento_id>/estatisticas/', views.api_estatisticas_evento, name='api_estatisticas_evento'),
     path('api/agencias/', views.get_agencias_json, name='get_agencias_json'),
     path('api/tamanhos/', views.get_tamanhos_json, name='get_tamanhos_json'),
+
+
 ]

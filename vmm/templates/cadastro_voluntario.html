@@ -236,6 +236,24 @@
 {% block extra_js %}
 
 <script>
+// Scroll automático para mensagens
+window.addEventListener('DOMContentLoaded', function() {
+    {% if scroll_to_messages %}
+        setTimeout(function() {
+            const messagesContainer = document.querySelector('.mb-8');
+            if (messagesContainer) {
+                const yOffset = -100; // Offset para não ficar colado no topo
+                const y = messagesContainer.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                
+                window.scrollTo({
+                    top: y,
+                    behavior: 'smooth'
+                });
+            }
+        }, 100);
+    {% endif %}
+});
+
 function formatarCPF(input) {
     let value = input.value.replace(/\D/g, '');
     value = value.replace(/(\d{3})(\d)/, '$1.$2');
@@ -261,7 +279,6 @@ function filtrarAgencias() {
     const filter = input.value.toLowerCase();
     const opcoes = dropdown.getElementsByClassName('agencia-option');
 
-    // Sempre mostrar dropdown quando há foco no campo
     dropdown.classList.remove('hidden');
     
     let hasVisibleOptions = false;
@@ -278,7 +295,6 @@ function filtrarAgencias() {
         }
     }
     
-    // Se não há opções visíveis, esconder dropdown
     if (!hasVisibleOptions) {
         dropdown.classList.add('hidden');
     }
@@ -292,19 +308,16 @@ function selecionarAgencia(codigo, nome) {
     dropdown.classList.add('hidden');
 }
 
-// Mostrar dropdown ao focar no campo
 document.getElementById('agencia-search').addEventListener('focus', function() {
-    filtrarAgencias(); // Mostra todas as opções
+    filtrarAgencias();
 });
 
-// Esconder dropdown ao sair do campo (com delay para permitir clique)
 document.getElementById('agencia-search').addEventListener('blur', function() {
     setTimeout(function() {
         document.getElementById('agencias-dropdown').classList.add('hidden');
     }, 200);
 });
 
-// Fechar dropdown ao clicar fora
 document.addEventListener('click', function(event) {
     const input = document.getElementById('agencia-search');
     const dropdown = document.getElementById('agencias-dropdown');
