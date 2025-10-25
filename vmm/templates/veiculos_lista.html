@@ -62,9 +62,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-gray-600 uppercase">Em Manutenção</p>
-                        <p class="text-3xl font-bold text-orange-600 mt-2">
-                            {{ total_veiculos|add:"-"|add:disponiveis }}
-                        </p>
+                        <p class="text-3xl font-bold text-orange-600 mt-2">{{ em_manutencao }}</p>
                     </div>
                     <div class="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center">
                         <i class="fa-solid fa-wrench text-orange-600 text-2xl"></i>
@@ -112,6 +110,19 @@
                             </option>
                         {% endfor %}
                     </select>
+                </div>
+                
+                <!-- Mostrar Inativos -->
+                <div class="flex items-center">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" 
+                               name="mostrar_inativos" 
+                               value="true"
+                               {% if mostrar_inativos %}checked{% endif %}
+                               onchange="this.form.submit()"
+                               class="mr-2 w-4 h-4 text-purple-600">
+                        <span class="text-sm font-medium text-gray-700">Mostrar inativos</span>
+                    </label>
                 </div>
                 
                 <!-- Botões -->
@@ -218,15 +229,26 @@
                                             <i class="fa-solid fa-eye"></i>
                                         </button>
                                         
-                                        <a href="{% url 'vmm:editar_veiculo' veiculo.id %}" 
-                                           class="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                                            <i class="fa-solid fa-pen-to-square"></i>
-                                        </a>
-                                        
-                                        <button onclick="confirmarExclusao({{ veiculo.id }}, '{{ veiculo.nome|escapejs }}')"
-                                                class="text-red-600 hover:text-red-800 font-medium text-sm">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
+                                        {% if veiculo.ativo %}
+                                            <a href="{% url 'vmm:editar_veiculo' veiculo.id %}" 
+                                               class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </a>
+                                            
+                                            <button onclick="confirmarExclusao({{ veiculo.id }}, '{{ veiculo.nome|escapejs }}')"
+                                                    class="text-red-600 hover:text-red-800 font-medium text-sm">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        {% else %}
+                                            <form method="POST" action="{% url 'vmm:reativar_veiculo' veiculo.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" 
+                                                        class="text-green-600 hover:text-green-800 font-medium text-sm"
+                                                        title="Reativar veículo">
+                                                    <i class="fa-solid fa-rotate-left"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -349,7 +371,7 @@ function toggleDetalhes(id) {
 
 function confirmarExclusao(id, nome) {
     document.getElementById('veiculo-nome').textContent = nome;
-    document.getElementById('form-delete').action = `/veiculos/excluir/${id}/`;
+    document.getElementById('form-delete').action = `{% url 'vmm:excluir_veiculo' 0 %}`.replace('0', id);
     document.getElementById('modal-delete').classList.remove('hidden');
 }
 

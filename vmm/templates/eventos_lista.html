@@ -165,6 +165,19 @@
                         </a>
                     </div>
                 </div>
+                
+                <!-- Mostrar Inativos -->
+                <div class="flex items-center">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" 
+                               name="mostrar_inativos" 
+                               value="true"
+                               {% if mostrar_inativos %}checked{% endif %}
+                               onchange="this.form.submit()"
+                               class="mr-2 w-4 h-4 text-purple-600">
+                        <span class="text-sm font-medium text-gray-700">Mostrar inativos</span>
+                    </label>
+                </div>
             </form>
         </div>
 
@@ -284,17 +297,28 @@
                                             <i class="fa-solid fa-eye"></i>
                                         </a>
                                         
-                                        <a href="{% url 'vmm:editar_evento' evento.id %}" 
-                                           class="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                                           title="Editar">
-                                            <i class="fa-solid fa-pen-to-square"></i>
-                                        </a>
-                                        
-                                        <button onclick="confirmarExclusao({{ evento.id }}, '{{ evento.nome_escola|escapejs }}')"
-                                                class="text-red-600 hover:text-red-800 font-medium text-sm"
-                                                title="Excluir">
-                                            <i class="fa-solid fa-trash"></i>
-                                        </button>
+                                        {% if evento.ativo %}
+                                            <a href="{% url 'vmm:editar_evento' evento.id %}" 
+                                               class="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                               title="Editar">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </a>
+                                            
+                                            <button onclick="confirmarExclusao({{ evento.id }}, '{{ evento.nome_escola|escapejs }}')"
+                                                    class="text-red-600 hover:text-red-800 font-medium text-sm"
+                                                    title="Excluir">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        {% else %}
+                                            <form method="POST" action="{% url 'vmm:reativar_evento' evento.id %}" style="display: inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" 
+                                                        class="text-green-600 hover:text-green-800 font-medium text-sm"
+                                                        title="Reativar evento">
+                                                    <i class="fa-solid fa-rotate-left"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -382,7 +406,7 @@
 <script>
 function confirmarExclusao(id, nome) {
     document.getElementById('evento-nome').textContent = nome;
-    document.getElementById('form-delete').action = `/eventos/excluir/${id}/`;
+    document.getElementById('form-delete').action = `{% url 'vmm:excluir_evento' 0 %}`.replace('0', id);
     document.getElementById('modal-delete').classList.remove('hidden');
 }
 

@@ -73,8 +73,15 @@ class Voluntario(models.Model):
         verbose_name="Status"
     )
     ativo = models.BooleanField(default=True, verbose_name="Ativo no Sistema")
+    data_inativacao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Inativação")
     data_cadastro = models.DateTimeField(default=timezone.now, verbose_name="Data de Cadastro")
     data_atualizacao = models.DateTimeField(auto_now=True, verbose_name="Última Atualização")
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete - marca como inativo ao invés de deletar"""
+        self.ativo = False
+        self.data_inativacao = timezone.now()
+        self.save()
 
     @staticmethod
     def formatar_cpf(cpf):
@@ -88,7 +95,8 @@ class Voluntario(models.Model):
             voluntario=self,
             evento__data_evento=data_evento,
             evento__hora_inicio__lt=hora_fim,
-            evento__hora_fim__gt=hora_inicio
+            evento__hora_fim__gt=hora_inicio,
+            ativo=True
         ).exists()
 
     class Meta:
@@ -99,6 +107,7 @@ class Voluntario(models.Model):
             models.Index(fields=['email_corporativo']),
             models.Index(fields=['cpf']),
             models.Index(fields=['status']),
+            models.Index(fields=['ativo']),
         ]
 
     def __str__(self):
@@ -131,25 +140,36 @@ class Veiculo(models.Model):
     )
     observacoes = models.TextField(blank=True, verbose_name="Observações")
     ativo = models.BooleanField(default=True, verbose_name="Ativo")
+    data_inativacao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Inativação")
     
     data_cadastro = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
 
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete - marca como inativo ao invés de deletar"""
+        self.ativo = False
+        self.data_inativacao = timezone.now()
+        self.save()
+
     def verificar_disponibilidade(self, data_evento, hora_inicio, hora_fim):
-        if self.status != 'disponivel':
+        if self.status != 'disponivel' or not self.ativo:
             return False
             
         return not EventoVeiculo.objects.filter(
             veiculo=self,
             evento__data_evento=data_evento,
             evento__hora_inicio__lt=hora_fim,
-            evento__hora_fim__gt=hora_inicio
+            evento__hora_fim__gt=hora_inicio,
+            ativo=True
         ).exists()
 
     class Meta:
         verbose_name = "Veículo"
         verbose_name_plural = "Veículos"
         ordering = ['nome']
+        indexes = [
+            models.Index(fields=['ativo']),
+        ]
 
     def __str__(self):
         return f"{self.nome} - {self.placa}"
@@ -188,6 +208,14 @@ class Evento(models.Model):
     criado_por = models.CharField(max_length=255, blank=True, verbose_name="Criado Por")
     data_criacao = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
+    ativo = models.BooleanField(default=True, verbose_name="Ativo no Sistema")
+    data_inativacao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Inativação")
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete - marca como inativo ao invés de deletar"""
+        self.ativo = False
+        self.data_inativacao = timezone.now()
+        self.save()
 
     def clean(self):
         super().clean()
@@ -199,7 +227,7 @@ class Evento(models.Model):
                 })
 
     def get_voluntarios_count(self):
-        return self.voluntarioevento_set.count()
+        return self.voluntarioevento_set.filter(ativo=True).count()
 
     class Meta:
         verbose_name = "Evento"
@@ -208,6 +236,7 @@ class Evento(models.Model):
         indexes = [
             models.Index(fields=['data_evento', 'hora_inicio']),
             models.Index(fields=['status']),
+            models.Index(fields=['ativo']),
         ]
 
     def __str__(self):
@@ -225,17 +254,29 @@ class EventoVeiculo(models.Model):
         related_name='veiculos_dirigidos'
     )
     observacoes = models.TextField(blank=True)
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+    data_inativacao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Inativação")
     
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete - marca como inativo ao invés de deletar"""
+        self.ativo = False
+        self.data_inativacao = timezone.now()
+        self.save()
+
     class Meta:
         unique_together = ['evento', 'veiculo']
         verbose_name = "Veículo no Evento"
         verbose_name_plural = "Veículos nos Eventos"
+        indexes = [
+            models.Index(fields=['ativo']),
+        ]
 
     @property
     def voluntarios_count(self):
         return VoluntarioEvento.objects.filter(
             evento=self.evento,
-            evento_veiculo=self
+            evento_veiculo=self,
+            ativo=True
         ).count()
     
     @property
@@ -296,8 +337,16 @@ class VoluntarioEvento(models.Model):
     )
     
     observacoes = models.TextField(blank=True, verbose_name="Observações")
+    ativo = models.BooleanField(default=True, verbose_name="Ativo")
+    data_inativacao = models.DateTimeField(null=True, blank=True, verbose_name="Data de Inativação")
     data_vinculo = models.DateTimeField(auto_now_add=True)
     data_atualizacao = models.DateTimeField(auto_now=True)
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete - marca como inativo ao invés de deletar"""
+        self.ativo = False
+        self.data_inativacao = timezone.now()
+        self.save()
 
     def clean(self):
         super().clean()
@@ -306,7 +355,8 @@ class VoluntarioEvento(models.Model):
             voluntario=self.voluntario,
             evento__data_evento=self.evento.data_evento,
             evento__hora_inicio__lt=self.evento.hora_fim,
-            evento__hora_fim__gt=self.evento.hora_inicio
+            evento__hora_fim__gt=self.evento.hora_inicio,
+            ativo=True
         ).exclude(pk=self.pk)
         
         if conflitos.exists():
@@ -319,7 +369,8 @@ class VoluntarioEvento(models.Model):
         if self.vai_no_veiculo and self.evento_veiculo:
             ocupantes = VoluntarioEvento.objects.filter(
                 evento=self.evento,
-                evento_veiculo=self.evento_veiculo
+                evento_veiculo=self.evento_veiculo,
+                ativo=True
             ).exclude(pk=self.pk).count()
             
             if ocupantes >= self.evento_veiculo.veiculo.capacidade:
@@ -336,6 +387,7 @@ class VoluntarioEvento(models.Model):
         indexes = [
             models.Index(fields=['evento', 'voluntario']),
             models.Index(fields=['presenca']),
+            models.Index(fields=['ativo']),
         ]
 
     def __str__(self):

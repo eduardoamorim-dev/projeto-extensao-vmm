@@ -159,89 +159,6 @@ def cadastro_voluntario(request):
         'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
     })
 
-def lista_voluntarios(request):
-    """View para listar voluntários"""
-    todos_voluntarios = Voluntario.objects.all()
-    voluntarios = todos_voluntarios.order_by('-data_cadastro')
-    
-    # Filtros
-    agencias_filtro = request.GET.getlist('agencia')
-    status_filtro = request.GET.get('status')
-    busca = request.GET.get('busca', '').strip()
-    
-    if busca:
-        voluntarios = voluntarios.filter(
-            Q(nome_completo__icontains=busca) |
-            Q(email_corporativo__icontains=busca) |
-            Q(cpf__icontains=busca)
-        )
-    
-    if agencias_filtro:
-        voluntarios = voluntarios.filter(agencia__in=agencias_filtro)
-    
-    if status_filtro:
-        voluntarios = voluntarios.filter(status=status_filtro)
-    
-    # Paginação
-    paginator = Paginator(voluntarios, 10)
-    page_number = request.GET.get('page')
-    voluntarios_page = paginator.get_page(page_number)
-    
-    # Estatísticas
-    voluntarios_por_agencia = (
-        todos_voluntarios.values('agencia')
-        .annotate(total=Count('id'))
-        .order_by('agencia')
-    )
-    
-    camisetas_por_tamanho = (
-        todos_voluntarios.values('tamanho_camiseta')
-        .annotate(total=Count('id'))
-        .order_by('tamanho_camiseta')
-    )
-    
-    def get_nome_agencia(codigo):
-        for cod, nome in Voluntario.AGENCIAS_CHOICES:
-            if cod == codigo:
-                return nome
-        return codigo
-    
-    def get_nome_tamanho(codigo):
-        for cod, nome in Voluntario.TAMANHOS_CAMISETA:
-            if cod == codigo:
-                return nome
-        return codigo
-    
-    agencias_stats = [
-        {'nome': get_nome_agencia(item['agencia']), 'total': item['total']}
-        for item in voluntarios_por_agencia
-    ]
-    
-    camisetas_stats = [
-        {'nome': get_nome_tamanho(item['tamanho_camiseta']), 'total': item['total']}
-        for item in camisetas_por_tamanho
-    ]
-    
-    context = {
-        'voluntarios': voluntarios_page,
-        'agencias': Voluntario.AGENCIAS_CHOICES,
-        'status_choices': Voluntario.STATUS_CHOICES,
-        'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
-        'agencias_filtro': agencias_filtro,
-        'status_filtro': status_filtro,
-        'busca': busca,
-        'agencias_stats': agencias_stats,
-        'camisetas_stats': camisetas_stats,
-        'total_voluntarios': todos_voluntarios.count(),
-        'cadastros_recentes': todos_voluntarios.filter(
-            data_cadastro__gte=timezone.now() - timedelta(days=7)
-        ).count(),
-        'total_ativos': todos_voluntarios.filter(status='ativo').count(),
-        'total_agencias': len(Voluntario.AGENCIAS_CHOICES),
-        'has_filters': bool(agencias_filtro or status_filtro or busca),
-    }
-
-    return render(request, 'admin_voluntarios_lista.html', context)
 
 
 @csrf_protect
@@ -340,21 +257,148 @@ def editar_voluntario(request, voluntario_id):
         'status_choices': Voluntario.STATUS_CHOICES,
     })
 
+def lista_voluntarios(request):
+    """View para listar voluntários (incluindo inativos se solicitado)"""
+    # Verificar se deve mostrar inativos
+    mostrar_inativos = request.GET.get('mostrar_inativos', 'false') == 'true'
+    
+    if mostrar_inativos:
+        todos_voluntarios = Voluntario.objects.all()
+    else:
+        todos_voluntarios = Voluntario.objects.filter(ativo=True)
+    
+    voluntarios = todos_voluntarios.order_by('-data_cadastro')
+    
+    # Filtros
+    agencias_filtro = request.GET.getlist('agencia')
+    status_filtro = request.GET.get('status')
+    busca = request.GET.get('busca', '').strip()
+    
+    if busca:
+        voluntarios = voluntarios.filter(
+            Q(nome_completo__icontains=busca) |
+            Q(email_corporativo__icontains=busca) |
+            Q(cpf__icontains=busca)
+        )
+    
+    if agencias_filtro:
+        voluntarios = voluntarios.filter(agencia__in=agencias_filtro)
+    
+    if status_filtro:
+        voluntarios = voluntarios.filter(status=status_filtro)
+    
+    # Paginação
+    paginator = Paginator(voluntarios, 10)
+    page_number = request.GET.get('page')
+    voluntarios_page = paginator.get_page(page_number)
+    
+    # Estatísticas (apenas ativos)
+    voluntarios_ativos = Voluntario.objects.filter(ativo=True)
+    
+    voluntarios_por_agencia = (
+        voluntarios_ativos.values('agencia')
+        .annotate(total=Count('id'))
+        .order_by('agencia')
+    )
+    
+    camisetas_por_tamanho = (
+        voluntarios_ativos.values('tamanho_camiseta')
+        .annotate(total=Count('id'))
+        .order_by('tamanho_camiseta')
+    )
+    
+    def get_nome_agencia(codigo):
+        for cod, nome in Voluntario.AGENCIAS_CHOICES:
+            if cod == codigo:
+                return nome
+        return codigo
+    
+    def get_nome_tamanho(codigo):
+        for cod, nome in Voluntario.TAMANHOS_CAMISETA:
+            if cod == codigo:
+                return nome
+        return codigo
+    
+    agencias_stats = [
+        {'nome': get_nome_agencia(item['agencia']), 'total': item['total']}
+        for item in voluntarios_por_agencia
+    ]
+    
+    camisetas_stats = [
+        {'nome': get_nome_tamanho(item['tamanho_camiseta']), 'total': item['total']}
+        for item in camisetas_por_tamanho
+    ]
+    
+    context = {
+        'voluntarios': voluntarios_page,
+        'agencias': Voluntario.AGENCIAS_CHOICES,
+        'status_choices': Voluntario.STATUS_CHOICES,
+        'tamanhos_camiseta': Voluntario.TAMANHOS_CAMISETA,
+        'agencias_filtro': agencias_filtro,
+        'status_filtro': status_filtro,
+        'busca': busca,
+        'mostrar_inativos': mostrar_inativos,
+        'agencias_stats': agencias_stats,
+        'camisetas_stats': camisetas_stats,
+        'total_voluntarios': voluntarios_ativos.count(),
+        'total_inativos': Voluntario.objects.filter(ativo=False).count(),
+        'cadastros_recentes': voluntarios_ativos.filter(
+            data_cadastro__gte=timezone.now() - timedelta(days=7)
+        ).count(),
+        'total_ativos': voluntarios_ativos.filter(status='ativo').count(),
+        'total_agencias': len(Voluntario.AGENCIAS_CHOICES),
+        'has_filters': bool(agencias_filtro or status_filtro or busca),
+    }
+
+    return render(request, 'admin_voluntarios_lista.html', context)
+
 
 @csrf_protect
 @require_http_methods(["POST"])
 def excluir_voluntario(request, voluntario_id):
-    """View para excluir voluntário - mantida"""
+    """Soft delete de voluntário"""
     voluntario = get_object_or_404(Voluntario, id=voluntario_id)
     nome = voluntario.nome_completo
     
-    try:
-        voluntario.delete()
-        messages.success(request, f'Voluntário {nome} excluído com sucesso!')
-    except Exception as e:
-        messages.error(request, 'Erro ao excluir voluntário.')
+    # Verificar se voluntário está em eventos futuros ativos
+    eventos_futuros = VoluntarioEvento.objects.filter(
+        voluntario=voluntario,
+        evento__data_evento__gte=timezone.now().date(),
+        evento__ativo=True,
+        ativo=True
+    )
     
+    if eventos_futuros.exists():
+        messages.warning(
+            request, 
+            f"Não é possível inativar {nome} pois está vinculado a eventos futuros. "
+            "Remova primeiro das escalas de eventos."
+        )
+        return redirect('vmm:lista_voluntarios')
+    
+    # Soft delete usando o método customizado do model
+    voluntario.delete()
+    
+    messages.success(request, f'Voluntário {nome} foi inativado com sucesso!')
     return redirect('vmm:lista_voluntarios')
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def reativar_voluntario(request, voluntario_id):
+    """Reativar voluntário"""
+    voluntario = get_object_or_404(Voluntario, id=voluntario_id)
+    
+    voluntario.ativo = True
+    voluntario.data_inativacao = None
+    voluntario.status = 'ativo'
+    voluntario.save()
+    
+    messages.success(request, f"Voluntário {voluntario.nome_completo} foi reativado com sucesso.")
+    return redirect('vmm:lista_voluntarios')
+
+
+
 
 @csrf_protect
 @require_http_methods(["POST"])
@@ -410,7 +454,14 @@ def editar_voluntario_evento(request, voluntario_evento_id):
 
 def lista_veiculos(request):
     """Lista todos os veículos com filtros"""
-    veiculos = Veiculo.objects.filter(ativo=True).order_by('nome')
+    mostrar_inativos = request.GET.get('mostrar_inativos', 'false') == 'true'
+    
+    if mostrar_inativos:
+        veiculos = Veiculo.objects.all()
+    else:
+        veiculos = Veiculo.objects.filter(ativo=True)
+    
+    veiculos = veiculos.order_by('nome')
     
     # Filtros
     status_filtro = request.GET.get('status')
@@ -434,6 +485,9 @@ def lista_veiculos(request):
     page_number = request.GET.get('page')
     veiculos_page = paginator.get_page(page_number)
     
+    # Estatísticas (apenas ativos)
+    veiculos_ativos = Veiculo.objects.filter(ativo=True)
+    
     context = {
         'veiculos': veiculos_page,
         'status_choices': Veiculo.STATUS_VEICULO,
@@ -441,12 +495,61 @@ def lista_veiculos(request):
         'status_filtro': status_filtro,
         'tipo_filtro': tipo_filtro,
         'busca': busca,
-        'total_veiculos': Veiculo.objects.filter(ativo=True).count(),
-        'disponiveis': Veiculo.objects.filter(status='disponivel', ativo=True).count(),
+        'mostrar_inativos': mostrar_inativos,
+        'total_veiculos': veiculos_ativos.count(),
+        'total_inativos': Veiculo.objects.filter(ativo=False).count(),
+        'disponiveis': veiculos_ativos.filter(status='disponivel').count(),
+        'em_manutencao': veiculos_ativos.filter(status='manutencao').count(),
+        'has_filters': bool(status_filtro or tipo_filtro or busca),
     }
     
     return render(request, 'veiculos_lista.html', context)
 
+
+@csrf_protect
+@require_http_methods(["POST"])
+def excluir_veiculo(request, veiculo_id):
+    """Soft delete de veículo"""
+    veiculo = get_object_or_404(Veiculo, id=veiculo_id)
+    nome = veiculo.nome
+    
+    # Verificar se há eventos futuros com este veículo
+    hoje = timezone.now().date()
+    eventos_futuros = EventoVeiculo.objects.filter(
+        veiculo=veiculo,
+        evento__data_evento__gte=hoje,
+        evento__ativo=True,
+        ativo=True
+    ).exists()
+    
+    if eventos_futuros:
+        messages.error(
+            request, 
+            f'O veículo {nome} possui eventos futuros agendados. '
+            'Remova-o dos eventos antes de inativar.'
+        )
+        return redirect('vmm:lista_veiculos')
+    
+    # Soft delete usando o método customizado do model
+    veiculo.delete()
+    
+    messages.success(request, f'Veículo {nome} foi inativado com sucesso!')
+    return redirect('vmm:lista_veiculos')
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def reativar_veiculo(request, veiculo_id):
+    """Reativar veículo"""
+    veiculo = get_object_or_404(Veiculo, id=veiculo_id)
+    
+    veiculo.ativo = True
+    veiculo.data_inativacao = None
+    veiculo.status = 'disponivel'
+    veiculo.save()
+    
+    messages.success(request, f"Veículo {veiculo.nome} foi reativado com sucesso.")
+    return redirect('vmm:lista_veiculos')
 
 @csrf_protect
 @require_http_methods(["GET", "POST"])
@@ -581,22 +684,6 @@ def editar_veiculo(request, veiculo_id):
 
 @csrf_protect
 @require_http_methods(["POST"])
-def excluir_veiculo(request, veiculo_id):
-    """Excluir veículo (soft delete)"""
-    veiculo = get_object_or_404(Veiculo, id=veiculo_id)
-    nome = veiculo.nome
-    
-    try:
-        # Verificar se há eventos futuros com este veículo
-        veiculo.delete()
-        messages.success(request, f'Veículo {nome} excluído com sucesso!')
-    except Exception as e:
-        messages.error(request, 'Erro ao excluir veículo.')
-    
-    return redirect('vmm:lista_veiculos')
-
-@csrf_protect
-@require_http_methods(["POST"])
 def adicionar_veiculo_evento(request, evento_id):
     """Adicionar veículo a um evento"""
     evento = get_object_or_404(Evento, id=evento_id)
@@ -660,50 +747,61 @@ def adicionar_veiculo_evento(request, evento_id):
     
     return redirect('vmm:detalhe_evento', evento_id=evento.id)
 
-
 @csrf_protect
 @require_http_methods(["POST"])
 def remover_veiculo_evento(request, evento_veiculo_id):
-    """Remover veículo de um evento"""
+    """Soft delete - remover veículo de um evento"""
     evento_veiculo = get_object_or_404(EventoVeiculo, id=evento_veiculo_id)
     evento_id = evento_veiculo.evento.id
     nome_veiculo = evento_veiculo.veiculo.nome
     
-    try:
-        # Verificar se há voluntários alocados neste veículo
-        voluntarios_no_veiculo = VoluntarioEvento.objects.filter(
-            evento=evento_veiculo.evento,
-            evento_veiculo=evento_veiculo
-        ).count()
-        
-        if voluntarios_no_veiculo > 0:
-            messages.warning(
-                request,
-                f'O veículo {nome_veiculo} possui {voluntarios_no_veiculo} voluntário(s) alocado(s). '
-                'Eles foram desvinculados do veículo.'
-            )
-            # Desvincular voluntários
-            VoluntarioEvento.objects.filter(
-                evento=evento_veiculo.evento,
-                evento_veiculo=evento_veiculo
-            ).update(evento_veiculo=None, vai_no_veiculo=False)
-        
-        evento_veiculo.delete()
-        messages.success(request, f'Veículo {nome_veiculo} removido do evento.')
-    except Exception as e:
-        messages.error(request, 'Erro ao remover veículo do evento.')
+    # Verificar se há voluntários alocados neste veículo
+    voluntarios_no_veiculo = VoluntarioEvento.objects.filter(
+        evento=evento_veiculo.evento,
+        evento_veiculo=evento_veiculo,
+        ativo=True
+    ).count()
     
+    if voluntarios_no_veiculo > 0:
+        messages.warning(
+            request,
+            f'O veículo {nome_veiculo} possui {voluntarios_no_veiculo} voluntário(s) alocado(s). '
+            'Eles foram desvinculados do veículo.'
+        )
+        # Desvincular voluntários
+        VoluntarioEvento.objects.filter(
+            evento=evento_veiculo.evento,
+            evento_veiculo=evento_veiculo,
+            ativo=True
+        ).update(evento_veiculo=None, vai_no_veiculo=False)
+    
+    # Soft delete usando o método customizado do model
+    evento_veiculo.delete()
+    
+    messages.success(request, f'Veículo {nome_veiculo} removido do evento.')
     return redirect('vmm:detalhe_evento', evento_id=evento_id)
+
 
 
 # ==================== VIEWS DE EVENTOS ====================
 
 def lista_eventos(request):
     """Lista todos os eventos com filtros"""
-    eventos = Evento.objects.prefetch_related(
+    mostrar_inativos = request.GET.get('mostrar_inativos', 'false') == 'true'
+    
+    if mostrar_inativos:
+        eventos = Evento.objects.all()
+    else:
+        eventos = Evento.objects.filter(ativo=True)
+    
+    eventos = eventos.prefetch_related(
         Prefetch(
             'voluntarioevento_set',
-            queryset=VoluntarioEvento.objects.select_related('voluntario')
+            queryset=VoluntarioEvento.objects.filter(ativo=True).select_related('voluntario')
+        ),
+        Prefetch(
+            'eventoveiculo_set',
+            queryset=EventoVeiculo.objects.filter(ativo=True).select_related('veiculo')
         )
     ).order_by('-data_evento', '-hora_inicio')
     
@@ -746,16 +844,17 @@ def lista_eventos(request):
     page_number = request.GET.get('page')
     eventos_page = paginator.get_page(page_number)
     
-    # Estatísticas
-    total_eventos = Evento.objects.count()
-    eventos_futuros = Evento.objects.filter(data_evento__gte=timezone.now().date()).count()
-    eventos_mes = Evento.objects.filter(
+    # Estatísticas (apenas ativos)
+    eventos_ativos = Evento.objects.filter(ativo=True)
+    total_eventos = eventos_ativos.count()
+    eventos_futuros = eventos_ativos.filter(data_evento__gte=timezone.now().date()).count()
+    eventos_mes = eventos_ativos.filter(
         data_evento__year=timezone.now().year,
         data_evento__month=timezone.now().month
     ).count()
     
     # Cidades únicas para filtro
-    cidades = Evento.objects.values_list('cidade', flat=True).distinct().order_by('cidade')
+    cidades = eventos_ativos.values_list('cidade', flat=True).distinct().order_by('cidade')
     
     context = {
         'eventos': eventos_page,
@@ -766,9 +865,12 @@ def lista_eventos(request):
         'data_fim': data_fim,
         'busca': busca,
         'cidades': cidades,
+        'mostrar_inativos': mostrar_inativos,
         'total_eventos': total_eventos,
+        'total_inativos': Evento.objects.filter(ativo=False).count(),
         'eventos_futuros': eventos_futuros,
         'eventos_mes': eventos_mes,
+        'has_filters': bool(status_filtro or cidade_filtro or data_inicio or data_fim or busca),
     }
     
     return render(request, 'eventos_lista.html', context)
@@ -1037,31 +1139,85 @@ def editar_evento(request, evento_id):
     
     return render(request, 'evento_editar.html', context)
 
-
 @csrf_protect
 @require_http_methods(["POST"])
 def excluir_evento(request, evento_id):
-    """Excluir evento"""
+    """Soft delete de evento"""
+    evento = get_object_or_404(Evento, id=evento_id)
+    nome_escola = evento.nome_escola
+    
+    # Soft delete usando o método customizado do model
+    evento.delete()
+    
+    # Inativar relacionamentos em cascata
+    VoluntarioEvento.objects.filter(evento=evento, ativo=True).update(
+        ativo=False,
+        data_inativacao=timezone.now()
+    )
+    EventoVeiculo.objects.filter(evento=evento, ativo=True).update(
+        ativo=False,
+        data_inativacao=timezone.now()
+    )
+    
+    messages.success(request, f'Evento "{nome_escola}" foi inativado com sucesso!')
+    return redirect('vmm:lista_eventos')
+
+@csrf_protect
+@require_http_methods(["POST"])
+def reativar_evento(request, evento_id):
+    """Reativar evento"""
+    evento = get_object_or_404(Evento, id=evento_id)
+    
+    evento.ativo = True
+    evento.data_inativacao = None
+    evento.save()
+    
+    messages.success(request, f"Evento na {evento.nome_escola} foi reativado com sucesso.")
+    return redirect('vmm:lista_eventos')
+
+
+@csrf_protect
+@require_http_methods(["POST"])
+def remover_voluntario_evento(request, voluntario_evento_id):
+    """Soft delete - inativar voluntário de um evento"""
+    vol_evento = get_object_or_404(VoluntarioEvento, id=voluntario_evento_id)
+    evento_id = vol_evento.evento.id
+    nome_voluntario = vol_evento.voluntario.nome_completo
+    
+    # Soft delete usando o método customizado do model
+    vol_evento.delete()
+    
+    messages.success(request, f'{nome_voluntario} removido do evento.')
+    return redirect('vmm:detalhe_evento', evento_id=evento_id)
+
+@csrf_protect
+@require_http_methods(["POST"])
+def cancelar_evento(request, evento_id):
+    """Cancelar evento - muda status mas mantém ativo=True"""
     evento = get_object_or_404(Evento, id=evento_id)
     nome_escola = evento.nome_escola
     
     try:
-        # Verificar se o evento já está concluído
         if evento.status == 'concluido':
-            messages.warning(
-                request,
-                f'O evento "{nome_escola}" já foi concluído e será mantido no histórico. '
-                'Status alterado para "Cancelado".'
-            )
+            messages.info(request, 'Eventos concluídos não podem ser cancelados.')
+        elif evento.status == 'cancelado':
+            messages.info(request, 'Este evento já está cancelado.')
+        else:
             evento.status = 'cancelado'
             evento.save()
-        else:
-            evento.delete()
-            messages.success(request, f'Evento "{nome_escola}" excluído com sucesso!')
+            
+            voluntarios_count = evento.voluntarioevento_set.count()
+            if voluntarios_count > 0:
+                messages.warning(
+                    request,
+                    f'Evento cancelado. {voluntarios_count} voluntário(s) foram notificados.'
+                )
+            else:
+                messages.success(request, f'Evento "{nome_escola}" foi cancelado!')
     except Exception as e:
-        messages.error(request, 'Erro ao excluir evento.')
+        messages.error(request, 'Erro ao cancelar evento.')
     
-    return redirect('vmm:lista_eventos')
+    return redirect('vmm:detalhe_evento', evento_id=evento.id) 
 
 
 # ==================== VIEWS DE VOLUNTÁRIOS EM EVENTOS ====================
@@ -1133,22 +1289,6 @@ def adicionar_voluntario_evento(request, evento_id):
         messages.error(request, f'Erro ao adicionar voluntário: {str(e)}')
     
     return redirect('vmm:detalhe_evento', evento_id=evento.id)
-@csrf_protect
-@require_http_methods(["POST"])
-def remover_voluntario_evento(request, voluntario_evento_id):
-    """Remover voluntário de um evento"""
-    vol_evento = get_object_or_404(VoluntarioEvento, id=voluntario_evento_id)
-    evento_id = vol_evento.evento.id
-    nome_voluntario = vol_evento.voluntario.nome_completo
-    
-    try:
-        vol_evento.delete()
-        messages.success(request, f'{nome_voluntario} removido do evento.')
-    except Exception as e:
-        messages.error(request, 'Erro ao remover voluntário do evento.')
-    
-    return redirect('vmm:detalhe_evento', evento_id=evento_id)
-
 
 @csrf_protect
 @require_http_methods(["POST"])
@@ -1187,6 +1327,7 @@ def calendario_eventos(request):
     
     # Eventos do mês
     eventos = Evento.objects.filter(
+        ativo=True,
         data_evento__year=ano,
         data_evento__month=mes
     ).prefetch_related('voluntarioevento_set')
@@ -1205,44 +1346,48 @@ def calendario_eventos(request):
 
 
 def dashboard_admin(request):
-    """Dashboard principal com visão geral do sistema"""
+    """Dashboard principal com visão geral do sistema (apenas dados ativos)"""
     hoje = timezone.now().date()
     
+    # Estatísticas apenas de registros ativos
     total_voluntarios = Voluntario.objects.filter(ativo=True).count()
     voluntarios_ativos = Voluntario.objects.filter(status='ativo', ativo=True).count()
-    total_eventos = Evento.objects.count()
+    total_eventos = Evento.objects.filter(ativo=True).count()
     total_veiculos = Veiculo.objects.filter(ativo=True).count()
     
     eventos_proximos = Evento.objects.filter(
+        ativo=True,
         data_evento__gte=hoje,
         data_evento__lte=hoje + timedelta(days=30),
         status__in=['planejamento', 'confirmado']
     ).order_by('data_evento', 'hora_inicio')[:5]
     
     eventos_mes = Evento.objects.filter(
+        ativo=True,
         data_evento__year=hoje.year,
         data_evento__month=hoje.month
     ).count()
     
-    voluntarios_mais_ativos = Voluntario.objects.annotate(
-        num_eventos=Count('voluntarioevento')
+    voluntarios_mais_ativos = Voluntario.objects.filter(ativo=True).annotate(
+        num_eventos=Count('voluntarioevento', filter=Q(voluntarioevento__ativo=True))
     ).filter(num_eventos__gt=0).order_by('-num_eventos')[:5]
     
-    veiculos_mais_usados = Veiculo.objects.annotate(
-        num_eventos=Count('eventoveiculo')
+    veiculos_mais_usados = Veiculo.objects.filter(ativo=True).annotate(
+        num_eventos=Count('eventoveiculo', filter=Q(eventoveiculo__ativo=True))
     ).filter(num_eventos__gt=0).order_by('-num_eventos')[:5]
     
-    eventos_por_status = Evento.objects.values('status').annotate(
+    eventos_por_status = Evento.objects.filter(ativo=True).values('status').annotate(
         total=Count('id')
     )
     
     alertas = []
     
     eventos_sem_voluntarios = Evento.objects.filter(
+        ativo=True,
         data_evento__gte=hoje,
         status__in=['planejamento', 'confirmado']
     ).annotate(
-        num_voluntarios=Count('voluntarioevento')
+        num_voluntarios=Count('voluntarioevento', filter=Q(voluntarioevento__ativo=True))
     ).filter(num_voluntarios=0)
     
     if eventos_sem_voluntarios.exists():
@@ -1381,7 +1526,7 @@ def api_verificar_disponibilidade_veiculo(request):
     return JsonResponse({'erro': 'Método não permitido'}, status=405)
 
 def api_voluntarios_disponiveis(request):
-    """API para listar voluntários disponíveis em determinado horário"""
+    """API para listar voluntários disponíveis em determinado horário (apenas ativos)"""
     if request.method == "GET":
         data_evento = request.GET.get('data_evento')
         hora_inicio = request.GET.get('hora_inicio')
@@ -1393,7 +1538,7 @@ def api_voluntarios_disponiveis(request):
             hora_inicio_obj = datetime.strptime(hora_inicio, '%H:%M').time()
             hora_fim_obj = datetime.strptime(hora_fim, '%H:%M').time()
             
-            # Buscar voluntários ativos
+            # Buscar apenas voluntários ativos
             voluntarios = Voluntario.objects.filter(status='ativo', ativo=True)
             
             # Filtrar disponíveis
@@ -1403,7 +1548,9 @@ def api_voluntarios_disponiveis(request):
                     voluntario=vol,
                     evento__data_evento=data_evento_obj,
                     evento__hora_inicio__lt=hora_fim_obj,
-                    evento__hora_fim__gt=hora_inicio_obj
+                    evento__hora_fim__gt=hora_inicio_obj,
+                    evento__ativo=True,
+                    ativo=True
                 )
                 
                 if evento_id:
@@ -1428,7 +1575,6 @@ def api_voluntarios_disponiveis(request):
             }, status=400)
     
     return JsonResponse({'erro': 'Método não permitido'}, status=405)
-
 
 def api_estatisticas_evento(request, evento_id):
     """API para retornar estatísticas de um evento específico"""
